@@ -75,14 +75,16 @@ namespace RoboSharp.UnitTests
         [TestMethod()]
         public void ExtractFlagTest(string input, string flag, bool expectedResult, string expectedOutput)
         {
-            var result = RoboCommandParserFunctions.ExtractFlag(input, flag, out string outputText);
+            var builder = new StringBuilder(input);
+            var result = RoboCommandParserFunctions.RemoveString(builder, flag);
             Assert.AreEqual(expectedResult, result, "\n Function Result Incorrect");
-            Assert.AreEqual(expectedOutput, outputText.Trim(), "\n Sanitized Output Mismatch");
+            Assert.AreEqual(expectedOutput, builder.Trim().ToString(), "\n Sanitized Output Mismatch");
 
             bool actionPerformed = false;
-            result = RoboCommandParserFunctions.ExtractFlag(input, flag, out outputText, () => actionPerformed = true);
+            builder = new StringBuilder(input);
+            result = RoboCommandParserFunctions.RemoveString(builder, flag, () => actionPerformed = true);
             Assert.AreEqual(expectedResult, result, "\n Function Result Incorrect");
-            Assert.AreEqual(expectedOutput, outputText.Trim(), "\n Sanitized Output Mismatch");
+            Assert.AreEqual(expectedOutput, builder.Trim().ToString(), "\n Sanitized Output Mismatch");
             Assert.AreEqual(expectedResult, actionPerformed, $"/n Function {(expectedResult ? "Not Performed" : "Performed Unexpectedly")}");
         }
 
@@ -113,11 +115,11 @@ namespace RoboSharp.UnitTests
         [TestMethod()]
         public void ParseSourceAndDestinationTest(string input, string expectedSource, string expectedDestination, string expectedSanitizedValue)
         {
-            var result = RoboCommandParserFunctions.ParseSourceAndDestination(input);
+            var result = RoboCommandParserFunctions.ParsedSourceDest.Parse(input);
             Assert.AreEqual(input, result.InputString, "\n Input Value Incorrect");
             Assert.AreEqual(expectedSource, result.Source, "\n Source Value Incorrect");
-            Assert.AreEqual(expectedDestination, result.Dest, "\n Destination Value Incorrect");
-            Assert.AreEqual(expectedSanitizedValue, result.SanitizedString.Trim(), "\n Sanitized Value Incorrect");
+            Assert.AreEqual(expectedDestination, result.Destination, "\n Destination Value Incorrect");
+            Assert.AreEqual(expectedSanitizedValue, result.SanitizedString.Trim().ToString(), "\n Sanitized Value Incorrect");
         }
 
         [DataRow("", "D:\\Dest", DisplayName = "Empty Source")]
@@ -138,7 +140,7 @@ namespace RoboSharp.UnitTests
                 try
                 {
                     string quote(string input) => wrap ? $"\"{input}\"" : input;
-                    RoboCommandParserFunctions.ParseSourceAndDestination(string.Format("{0} {1} /PURGE", quote(source), quote(destination)));
+                    RoboCommandParserFunctions.ParsedSourceDest.Parse(string.Format("{0} {1} /PURGE", quote(source), quote(destination)));
                 }
                 catch (Exception ex)
                 {
@@ -159,10 +161,11 @@ namespace RoboSharp.UnitTests
         [TestMethod()]
         public void TryExtractParameterTest(string input, string parameter, string expectedvalue, string expectedOutput, bool expectedResult)
         {
-            var result = RoboCommandParserFunctions.TryExtractParameter(input, parameter, out string value, out string outputText);
+            var builder = new StringBuilder(input);
+            var result = RoboCommandParserFunctions.TryExtractParameter(builder, parameter, out string value);
             Assert.AreEqual(expectedResult, result, "/n Function Result Mismatch");
             Assert.AreEqual(expectedvalue, value, "/n Expected Value Mismatch");
-            Assert.AreEqual(expectedOutput, outputText.Trim(), "/n Sanitized Output Mismatch");
+            Assert.AreEqual(expectedOutput, builder.Trim().ToString(), "/n Sanitized Output Mismatch");
         }
 
         [DataRow(@"*.* *.pdf", @"", 2, DisplayName = "Test 1")]
@@ -174,10 +177,11 @@ namespace RoboSharp.UnitTests
         public void FileFilterParsingTest(string input, string expectedoutput, int expectedCount)
         {
             Debugger.Instance.DebugMessageEvent += RoboCommandParserTests.DebuggerWriteLine;
-            var result = RoboCommandParserFunctions.ExtractFileFilters(input, out string modified);
+            var builder = new StringBuilder(input);
+            var result = RoboCommandParserFunctions.ExtractFileFilters(builder);
             Debugger.Instance.DebugMessageEvent -= RoboCommandParserTests.DebuggerWriteLine;
             Assert.AreEqual(expectedCount, result.Count(), "Did not receive expected count!");
-            Assert.AreEqual(expectedoutput.Trim(), modified.Trim(), "Extracted Text does not match!");
+            Assert.AreEqual(expectedoutput.Trim(), builder.Trim().ToString(), "Extracted Text does not match!");
         }
 
         [DataRow(@"/XF C:\someDir\someFile.pdf *some_Other-File* /XD SomeDir", @"/XD SomeDir", 2, DisplayName = "Test 1")]
@@ -188,10 +192,11 @@ namespace RoboSharp.UnitTests
         public void ExtractExclusionFilesTest(string input, string expectedoutput, int expectedCount)
         {
             Debugger.Instance.DebugMessageEvent += RoboCommandParserTests.DebuggerWriteLine;
-            var result = RoboCommandParserFunctions.ExtractExclusionFiles(input, out string modified);
+            var builder = new StringBuilder(input);
+            var result = RoboCommandParserFunctions.ExtractExclusionFiles(builder);
             Debugger.Instance.DebugMessageEvent -= RoboCommandParserTests.DebuggerWriteLine;
             Assert.AreEqual(expectedCount, result.Count(), "Did not receive expected count of excluded Files!");
-            Assert.AreEqual(expectedoutput.Trim(), modified.Trim(), "Extracted Text does not match!");
+            Assert.AreEqual(expectedoutput.Trim(), builder.Trim().ToString(), "Extracted Text does not match!");
         }
 
         [DataRow(@"/XD C:\someDir *someOtherDir* /XF SomeFile.*", @"/XF SomeFile.*", 2, DisplayName = "Test 1")]
@@ -202,10 +207,11 @@ namespace RoboSharp.UnitTests
         public void ExtractExclusionDirectoriesTest(string input, string expectedoutput, int expectedCount)
         {
             Debugger.Instance.DebugMessageEvent += RoboCommandParserTests.DebuggerWriteLine;
-            var result = RoboCommandParserFunctions.ExtractExclusionDirectories(input, out string modified);
+            var builder = new StringBuilder(input);
+            var result = RoboCommandParserFunctions.ExtractExclusionDirectories(builder);
             Debugger.Instance.DebugMessageEvent -= RoboCommandParserTests.DebuggerWriteLine;
             Assert.AreEqual(expectedCount, result.Count(), "Did not receive expected count of excluded directories!");
-            Assert.AreEqual(expectedoutput.Trim(), modified.Trim(), "Extracted Text does not match!");
+            Assert.AreEqual(expectedoutput.Trim(), builder.Trim().ToString(), "Extracted Text does not match!");
         }
     }
 }
