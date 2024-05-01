@@ -86,7 +86,7 @@ namespace RoboSharp
         }
 
         /// <summary>
-        /// Parse a string of text that represents a set of robocopy options (without source/destination) into an IRoboCommand
+        /// Parse a string of text that represents a set of robocopy options into a new IRoboCommand. Source and Destination values are ignored.
         /// </summary>
         /// <param name="commandOptions">The robocopy options to parse. Must not contain the phrase 'robocopy'. Must also not contain source/destination info.</param>
         /// <param name="factory">The factory used to generate the robocommand. <br/>If not specified, uses <see cref="RoboCommandFactory.Default"/></param>
@@ -96,29 +96,11 @@ namespace RoboSharp
         public static IRoboCommand ParseOptions(string commandOptions, IRoboCommandFactory factory = default)
         {
             // Sanity Checks to ensure correct method is being utilized:
-            if (string.IsNullOrWhiteSpace(commandOptions)) throw new ArgumentException("Input string is null or empty!", nameof(commandOptions));
-            if (commandOptions.Contains("robocopy")) throw new ArgumentException("Input string contains the phrase 'robocopy' - can not continue. Did you mean to use RoboCommandParser.Parse() instead?", nameof(commandOptions));
-
+            if (string.IsNullOrWhiteSpace(commandOptions)) throw new RoboCommandParserException("Input string is null or empty!", nameof(commandOptions));
             Debugger.Instance.DebugMessage($"RoboCommandParser.ParseOptions - Begin parsing input string : {commandOptions}");
-            ParsedSourceDest parsedCommand;
-            try
-            {
-                //commandOptions = TrimRobocopy(commandOptions);
-                parsedCommand = ParsedSourceDest.Parse(commandOptions);
-                if (parsedCommand.Source.Length > 0 | parsedCommand.Destination.Length > 0)
-                    throw new ArgumentException("Input string contained Source/Destination arguments. RoboCommandParser.Parse() should be used instead.");
-            }
-            catch (RoboCommandParserException ex)
-            {
-                if (ex.Message != RoboCommandParserFunctions.ParsedSourceDest.SourceDestinationUnableToParseMessage) // ignore this specific message, as it indicates no source/destination, which is correct for this.
-                    throw new ArgumentException("Input string contained Source/Destination arguments. RoboCommandParser.Parse() should be used instead.", ex);
-                parsedCommand = new ParsedSourceDest(commandOptions);
-            }
-
-            var roboCommand = ParseOptionsInternal(parsedCommand, factory ?? RoboCommandFactory.Default);
+            var roboCommand = ParseOptionsInternal(ParsedSourceDest.ParseOptionsOnly(commandOptions), factory ?? RoboCommandFactory.Default);
             Debugger.Instance.DebugMessage("RoboCommandParser.ParseOptions completed successfully.\n");
             return roboCommand;
-
         }
 
         /// <summary> Parse the options text into a new IRoboCommand object. </summary>
