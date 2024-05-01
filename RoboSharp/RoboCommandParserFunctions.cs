@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -23,7 +24,10 @@ namespace RoboSharp
         /// </summary>
         public readonly struct ParsedSourceDest
         {
-            internal ParsedSourceDest(string input) : this(string.Empty, string.Empty, input, new StringBuilder(input)) { }
+            public readonly string Source;
+            public readonly string Destination;
+            public readonly string InputString;
+            public readonly StringBuilder SanitizedString;
 
             private ParsedSourceDest(string source, string dest, string input, StringBuilder sanitized)
             {
@@ -33,13 +37,40 @@ namespace RoboSharp
                 SanitizedString = sanitized;
             }
 
-            public readonly string Source;
-            public readonly string Destination;
-            public readonly string InputString;
-            /// <summary> The InputString with the Source and Destination removed </summary>
-            public readonly StringBuilder SanitizedString;
-
             internal const string SourceDestinationUnableToParseMessage = "Source and Destination were unable to be parsed.";
+
+            //SomeServer/HiddenDrive$/RootFolder   //SomeServer\RootFolder
+            //lang=regex                        no quotes                                           quotes
+            internal const string uncRegex = @"([\\\/]{2}[^*:?""<>|$\s]+?[$]?[\\\/][^*:?""<>|\s]+?) | (""[\\\/]{2}[^*:?""<>|$]+?[$]?[\\\/][^*:?""<>|]+?"")";
+
+            // c:\  D:/SomeFolder  "X:\Spaced Folder Name"
+            //lang=regex                          no quotes                           quotes
+            internal const string localRegex = @"([a-zA-Z][:][\\\/][^:*?""<>|\s]*) | (""([a-zA-Z][:][\\\/][^:*?""<>|]*)"")";
+            private const string allowedPathsRegex = @"(""\s*"") | " + localRegex + "|" + uncRegex;
+
+            internal const string fullRegex = @"^\s*(?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @") .*$";
+            internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @") .*$";
+            internal const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
+            
+            /// <returns>Strips out any Source/Dest information, then returns a new object</returns>
+            public static ParsedSourceDest ParseOptionsOnly(string inputText)
+            {
+                string trimmedText = TrimRobocopy(inputText);
+                StringBuilder builder = new StringBuilder(trimmedText).TrimStart();
+                Regex regex = new Regex(allowedPathsRegex, regexOptions);
+                
+                // source
+                var match =  regex.Match(trimmedText);
+                if (match.Success) 
+                    builder.TrimStart(match.Groups[0].Value).TrimStart();
+
+                // Dest
+                match = regex.Match(builder.ToString());
+                if (match.Success)
+                    builder.TrimStart(match.Groups[0].Value).TrimStart();
+
+                return new ParsedSourceDest(string.Empty, string.Empty, inputText, builder);
+            }
 
             /// <summary>
             /// Parse the input text, extracting the Source and Destination info.
@@ -53,28 +84,19 @@ namespace RoboSharp
             /// <exception cref="RoboCommandParserException"/>
             public static ParsedSourceDest Parse(string inputText)
             {
-                // Definition (prefix) (Source (quoted version) | (no quotes)) (dest (quoted version) | (no quotes))
-                // This should handle all scenarios, including networks paths such as \\MyServer\DriveName$\Apps\
-                // Note : if its contained within quotes, it simply accepts tall characters within the quotes.
-                // This also includes allowing both source and destination to be empty, as long as both are empty quotes : robocopy "" "" /XF
-                //lang=regex 
-                const string fullPattern = @"^\s*(?<source> (""\s*"") | (?<sQuote>""(.+?[:$].+?)"") | (?<sNoQuote>[^:*?""<>|\s]+?[:$][^:*?<>|\s]+) ) \s+ (?<dest> (""\s*"") | (?<dQuote>"".+?[:$].+?"") | (?<dNoQuote>[^:*?""<>|\s]+?[:$][^:*?<>|\s]+) ).*$";
-                //lang=regex 
-                const string fallbackPattern = @"^\s*(?<source>(""\s*"") | (?<sQuote>""(.+?[:$].+?)"") | (?<sNoQuote>[^:*?""<>|\s]+?[:$][^:*?<>|\s]+) ) (?<dest>).+";
-                const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
-
-                var match = Regex.Match(inputText, fullPattern, regexOptions);
+                var match = Regex.Match(inputText, fullRegex, regexOptions);
                 RoboCommandParserException ex;
                 if (!match.Success)
                 {
-                    match = Regex.Match(inputText, fallbackPattern, regexOptions);
-                    if (!match.Success)
+                    if (Regex.IsMatch(inputText, destinationUndefinedRegex, regexOptions))
                     {
-                        Debugger.Instance.DebugMessage($"-- > Unable to detect a Source/Destination pattern match \n----> Input text : " + inputText);
-                        ex = new RoboCommandParserException(SourceDestinationUnableToParseMessage);
+                        ex = new RoboCommandParserException("Invalid command - Source was provided but destination was not.");
                         ex.AddData("input", inputText);
-                        //ex.AddData("Workaround", "One workaround to this is  to submit the input text with the source / destination empty. This can be done with an empty set of quotes at the beginning of the input string.");
                         throw ex;
+                    }
+                    else
+                    {
+                        return new ParsedSourceDest(string.Empty, string.Empty, inputText, new StringBuilder(inputText));
                     }
                 }
 
@@ -94,8 +116,8 @@ namespace RoboSharp
                 if (sourceQualified && destQualified)
                 {
                     Debugger.Instance.DebugMessage($"--> Source and Destination Pattern Match Success:");
-                    Debugger.Instance.DebugMessage($"----> Source : " + source);
-                    Debugger.Instance.DebugMessage($"----> Destination : " + dest);
+                    Debugger.Instance.DebugMessage($"----> Source : {source}");
+                    Debugger.Instance.DebugMessage($"----> Destination : {dest}");
                     commandBuilder.RemoveString(rawSource);
                     commandBuilder.RemoveString(rawDest);
                     return new ParsedSourceDest(source, dest, inputText, commandBuilder);
@@ -112,9 +134,9 @@ namespace RoboSharp
                 }
                 else
                 {
-                    Debugger.Instance.DebugMessage($"--> Unable to detect a valid Source/Destination pattern match -- Input text : " + inputText);
-                    Debugger.Instance.DebugMessage($"----> Source : " + source);
-                    Debugger.Instance.DebugMessage($"----> Destination : " + dest);
+                    Debugger.Instance.DebugMessage($"--> Unable to detect a valid Source/Destination pattern match -- Input text : {inputText}");
+                    Debugger.Instance.DebugMessage($"----> Source : {source}");
+                    Debugger.Instance.DebugMessage($"----> Destination : {dest}");
                     ex = new RoboCommandParserException(message: true switch
                     {
                         true when sourceEmpty && destQualified => "Destination is fully qualified, but Source is empty. See exception data.",
@@ -397,7 +419,7 @@ namespace RoboSharp
                     if (!c.Equals(builder[index]))
                         return false;
                 }
-                else if (!char.ToLowerInvariant(c).Equals(builder[index]))
+                else if (!char.ToLowerInvariant(c).Equals(char.ToLowerInvariant(builder[index])))
                 {
                     return false;
                 }
