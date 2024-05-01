@@ -37,8 +37,6 @@ namespace RoboSharp
                 SanitizedString = sanitized;
             }
 
-            internal const string SourceDestinationUnableToParseMessage = "Source and Destination were unable to be parsed.";
-
             //SomeServer/HiddenDrive$/RootFolder   //SomeServer\RootFolder
             //lang=regex                        no quotes                                           quotes
             internal const string uncRegex = @"([\\\/]{2}[^*:?""<>|$\s]+?[$]?[\\\/][^*:?""<>|\s]+?) | (""[\\\/]{2}[^*:?""<>|$]+?[$]?[\\\/][^*:?""<>|]+?"")";
@@ -48,7 +46,7 @@ namespace RoboSharp
             internal const string localRegex = @"([a-zA-Z][:][\\\/][^:*?""<>|\s]*) | (""([a-zA-Z][:][\\\/][^:*?""<>|]*)"")";
             private const string allowedPathsRegex = @"(""\s*"") | " + localRegex + "|" + uncRegex;
 
-            internal const string fullRegex = @"^\s*(?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @") .*$";
+            internal const string fullRegex = @"^\s* (?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @") .*$";
             internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @") .*$";
             internal const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
             
@@ -90,14 +88,23 @@ namespace RoboSharp
                 {
                     if (Regex.IsMatch(inputText, destinationUndefinedRegex, regexOptions))
                     {
-                        ex = new RoboCommandParserException("Invalid command - Source was provided but destination was not.");
-                        ex.AddData("input", inputText);
-                        throw ex;
+                        ex = new RoboCommandParserException("Invalid command string - Source was provided without providing Destination");
+                    }
+                    else if (Regex.IsMatch(inputText, $"^\\s* .+? \\s* {allowedPathsRegex}", regexOptions))
+                    {
+                        ex = new RoboCommandParserException("Invalid data present in command options prior to a source/destination paths");
+                    }
+                    else if (Regex.IsMatch(inputText, @"^\s* ( ([^:""<>|/]+?\S[^:""<>|]+) | (/[A-Za-z]{1,2}) )", regexOptions))
+                    {
+                        // Checks if unquoted source/destination is empty, and string has file filters or some switch specified
+                        return new ParsedSourceDest(string.Empty, string.Empty, inputText, new StringBuilder(inputText));
                     }
                     else
                     {
-                        return new ParsedSourceDest(string.Empty, string.Empty, inputText, new StringBuilder(inputText));
+                        ex = new RoboCommandParserException("Source and Destination were unable to be parsed.");
                     }
+                    ex.AddData("input", inputText);
+                    throw ex;
                 }
 
                 string rawSource = match.Groups["source"].Value;

@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace RoboSharp.UnitTests
@@ -107,6 +108,27 @@ namespace RoboSharp.UnitTests
             }
         }
 
+        [DataRow(@"C:\")]
+        [DataRow(@"C:\SomeFolder")]
+        [DataRow(@"C:/SomeFolder/")]
+        [DataRow(@"//Server/Drive$/Folder")]
+        [DataRow(@"\\Server\Drive$\Folder")]
+        [DataRow(@"//Server/Folder")]
+        [DataRow(@"\\Server\Folder")]
+        [TestMethod]
+        public void PathDetectionValidation(string input)
+        {
+            const RegexOptions options = RoboCommandParserFunctions.ParsedSourceDest.regexOptions;
+            const string unc = RoboSharp.RoboCommandParserFunctions.ParsedSourceDest.uncRegex;
+            const string loc = RoboSharp.RoboCommandParserFunctions.ParsedSourceDest.localRegex;
+            
+            Assert.IsTrue(Regex.IsMatch(input, unc, options) | Regex.IsMatch(input, loc, options));
+            Assert.AreNotEqual(Regex.IsMatch(input, unc, options), Regex.IsMatch(input, loc, options));
+            // Test Quotes
+            string quotedInput = $"\"{input}\"";
+            Assert.IsTrue(Regex.IsMatch(quotedInput, unc, options) | Regex.IsMatch(quotedInput, loc, options));
+        }
+
         [DataRow("C:\\MySource \"D:\\My Destination\" /XF", @"C:\MySource", @"D:\My Destination", "/XF", DisplayName = "Quoted Destination")]
         [DataRow("\"C:\\My Source\" D:\\MyDestination /XF", @"C:\My Source", @"D:\MyDestination", "/XF", DisplayName = "Quoted Source")]
         [DataRow("\"C:\\My Source\" \"D:\\My Destination\" /XF", @"C:\My Source", @"D:\My Destination", "/XF", DisplayName = "Quotes + Spaces")]
@@ -128,8 +150,8 @@ namespace RoboSharp.UnitTests
         [DataRow("8:bad_source", "D:\\Dest", DisplayName = "Unqualified Source")]
         [DataRow("D:\\Source", "", DisplayName = "Empty Destination")]
         [DataRow("D:\\Source", "/:bad_dest", DisplayName = "Unqualified Destination")]
-        [DataRow("", "", false, DisplayName = "No Values - Quotes")]
-        [DataRow("", "", true, false, DisplayName = "No Values- No Quotes")]
+        [DataRow("", "", false, true, DisplayName = "No Values - Quotes")]
+        [DataRow("", "", false, false, DisplayName = "No Values- No Quotes")]
         [DataRow("//Server\\myServer$\\1", "//Server\\myServer$\\2", false, false, DisplayName = "Server Test - No Quotes")]
         [DataRow("//Server\\myServer$\\1", "//Server\\myServer$\\2", false, true, DisplayName = "Server Test - Quotes")]
         [TestMethod()]
