@@ -39,22 +39,22 @@ namespace RoboSharp
 
             //SomeServer/HiddenDrive$/RootFolder   //SomeServer\RootFolder
             //lang=regex                        no quotes                                           quotes
-            internal const string uncRegex = @"([\\\/]{2}[^*:?""<>|$\s]+?[$]?[\\\/][^*:?""<>|\s]+?) | (""[\\\/]{2}[^*:?""<>|$]+?[$]?[\\\/][^*:?""<>|]+?"")";
+            internal const string uncRegex = @"([\\\/]{2}[^*:?""<>|$\s]+?[$]?[\\\/]([^*:?""<>|\s]+)?) | (""[\\\/]{2}[^*:?""<>|$]+?[$]?[\\\/]([^*:?""<>|]+)?"")";
 
             // c:\  D:/SomeFolder  "X:\Spaced Folder Name"
             //lang=regex                          no quotes                           quotes
-            internal const string localRegex = @"([a-zA-Z][:][\\\/][^:*?""<>|\s]*) | (""([a-zA-Z][:][\\\/][^:*?""<>|]*)"")";
-            private const string allowedPathsRegex = @"(""\s*"") | " + localRegex + "|" + uncRegex;
+            internal const string localRegex = @"([a-zA-Z][:][\\\/]([^:*?""<>|\s]+)?) | (""([a-zA-Z][:][\\\/]([^:*?""<>|]+)?)"")";
+            private const string allowedPathsRegex = @"(""\s*"") | (" + localRegex + ")|(" + uncRegex + ")";
 
-            internal const string fullRegex = @"^\s* (?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @") .*$";
-            internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @") .*$";
+            internal const string fullRegex = @"^\s* (?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @")";
+            internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @")$";
             internal const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
             
             /// <returns>Strips out any Source/Dest information, then returns a new object</returns>
             public static ParsedSourceDest ParseOptionsOnly(string inputText)
             {
-                string trimmedText = TrimRobocopy(inputText);
-                StringBuilder builder = new StringBuilder(trimmedText).TrimStart();
+                string trimmedText = TrimRobocopy(inputText).TrimStart();
+                StringBuilder builder = new StringBuilder(trimmedText);
                 Regex regex = new Regex(allowedPathsRegex, regexOptions);
                 
                 // source
@@ -109,14 +109,14 @@ namespace RoboSharp
 
                 string rawSource = match.Groups["source"].Value;
                 string rawDest = match.Groups["dest"].Value;
-                string source = rawSource.Trim('\"');
-                string dest = rawDest.Trim('\"');
-
+                string source = rawSource.CleanDirectoryPath();
+                string dest = rawDest.CleanDirectoryPath();
+                
                 // Validate source and destination - both must be empty, or both must be fully qualified
                 bool sourceEmpty = string.IsNullOrWhiteSpace(source);
                 bool destEmpty = string.IsNullOrWhiteSpace(dest);
                 bool sourceQualified = source.IsPathFullyQualified();
-                bool destQualified = dest.IsPathFullyQualified();
+                bool destQualified =  dest.IsPathFullyQualified();
 
                 StringBuilder commandBuilder = new StringBuilder(inputText);
 
