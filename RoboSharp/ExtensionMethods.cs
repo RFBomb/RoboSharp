@@ -323,7 +323,7 @@ namespace RoboSharp
             }
             return result;
         }
-        public static bool StartsWith(this StringBuilder builder, char c) => builder[0] == c;
+        public static bool StartsWith(this StringBuilder builder, char c) => builder.Length >= 1 && builder[0] == c;
         public static bool StartsWith(this StringBuilder builder, string value, bool caseSensitive = false)
         {
             int index = 0;
@@ -343,7 +343,7 @@ namespace RoboSharp
             return true;
         }
 
-        public static bool EndsWith(this StringBuilder builder, char c) => builder[builder.Length - 1] == c;
+        public static bool EndsWith(this StringBuilder builder, char c) => builder.Length >= 1 && builder[builder.Length - 1] == c;
         public static bool EndsWith(this StringBuilder builder, string text)
         {
             if (builder.Length < text.Length) return false;

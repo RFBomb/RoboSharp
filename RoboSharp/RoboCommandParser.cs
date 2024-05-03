@@ -114,7 +114,7 @@ namespace RoboSharp
             var roboCommand = factory.GetRoboCommand(sourceDest.Source, sourceDest.Destination, ParseCopyFlags(sanitizedCmd), ParseSelectionFlags(sanitizedCmd));
 
             // apply the file filters, if any were discovered
-            if (filters.Any()) roboCommand.CopyOptions.AddFileFilter(filters.ToArray());
+            if (filters.Any()) roboCommand.CopyOptions.AddFileFilter(filters);
 
             // apply the remaining options
             return roboCommand

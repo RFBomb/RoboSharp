@@ -732,10 +732,12 @@ namespace RoboSharp
         /// <br/>Otherwise, the <paramref name="filters"/> will be added to the collection.
         /// </summary>
         /// <param name="filters"><inheritdoc cref="FileFilter" path="/summary"/></param>
-        public void AddFileFilter(params string[] filters)
+        public void AddFileFilter(params string[] filters) => AddFileFilter(filters);
+
+        /// <inheritdoc cref="AddFileFilter(string[])">
+        public void AddFileFilter(IEnumerable<string> filters)
         {
-            if (filters.Length == 0) return;
-            if (_fileFilter is null) 
+            if (_fileFilter is null)
                 FileFilter = filters;
             else
                 FileFilter = _fileFilter.Concat(filters);
