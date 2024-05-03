@@ -141,8 +141,12 @@ namespace RoboSharp
         /// The Default File Filter used that will allow copying of all files
         /// </summary>
         public const string DefaultFileFilter = "*.*" ;
-        
-        private IEnumerable<string> fileFilter = new[] { DefaultFileFilter };
+        private static IEnumerable<string> DefaultFileFilterEnumerable()
+        {
+            yield return DefaultFileFilter;
+        }
+
+        private IEnumerable<string> _fileFilter;
         private string copyFlags = "DAT";
         private string directoryCopyFlags = !VersionManager.IsPlatformWindows ? "DA" : VersionManager.Version >= 6.2 ? "DA" : "T";
 
@@ -170,14 +174,8 @@ namespace RoboSharp
         /// <remarks>JobOptions file saves these into the /IF (Include Files) section</remarks>
         public IEnumerable<string> FileFilter
         {
-            get
-            {
-                return fileFilter;
-            }
-            set
-            {
-                fileFilter = value;
-            }
+            get => _fileFilter ?? DefaultFileFilterEnumerable();
+            set => _fileFilter = value;
         }
 
         /// <summary>
@@ -556,21 +554,6 @@ namespace RoboSharp
         #region < Parse (INTERNAL) >
 
         /// <summary>
-        /// Used by the Parse method to sanitize path for the command options.<br/>
-        /// Evaluate the path. If needed, wrap it in quotes.  <br/>
-        /// If the path ends in a DirectorySeperatorChar, santize it to work as expected. <br/>
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns>Each return string includes a space at the end of the string to seperate it from the next option variable.</returns>
-        private static string WrapPath(string path)
-        {
-            if (!path.Contains(" ")) return $"{path} "; //No spaces, just return the path
-            //Below this line, the path contains a space, so it must be wrapped in quotes.
-            if (path.EndsWithDirectorySeperator()) return $"\"{path}.\" "; // Ends with a directory seperator - Requires a '.' to denote using that directory. ex: "F:\."
-            return $"\"{path}\" ";
-        }
-
-        /// <summary>
         /// Parse the class properties and generate the command arguments
         /// </summary>
         /// <param name="optionsOnly">When <see langword="true"/> only returns the options tags, similar to how robocopy would display them. (omits the source/destination)</param>
@@ -584,15 +567,17 @@ namespace RoboSharp
             if (!optionsOnly)
             {
                 // Set Source and Destination
-                options.Append(WrapPath(Source));
-                options.Append(WrapPath(Destination));
+                options.AppendWrappedPath(Source)
+                    .Append(' ')
+                    .AppendWrappedPath(Destination)
+                    .Append(' ');
             }
-            
-            // Set FileFilter
+
             // Quote each FileFilter item. The quotes are trimmed first to ensure that they are applied only once.
-            var fileFilterQuotedItems = FileFilter.Select(word => "\"" + word.Trim('"') + "\"");
-            string fileFilter = String.Join(" ", fileFilterQuotedItems);
-            options.Append($"{fileFilter} ");
+            foreach(string filter in FileFilter)
+            {
+                options.Append('"').Append(filter.Trim('"')).Append('"').Append(' ');
+            }
             Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
 
             #region Set Options
@@ -750,16 +735,10 @@ namespace RoboSharp
         public void AddFileFilter(params string[] filters)
         {
             if (filters.Length == 0) return;
-            if (FileFilter is null | !FileFilter.Any())
+            if (_fileFilter is null) 
                 FileFilter = filters;
             else
-            {
-                var cur = FileFilter.ToArray();
-                if (cur.Length == 1 && cur[0] == DefaultFileFilter)
-                    FileFilter = filters;
-                else
-                    FileFilter = cur.Concat(filters);
-            }
+                FileFilter = _fileFilter.Concat(filters);
         }
 
         #region < Flags >

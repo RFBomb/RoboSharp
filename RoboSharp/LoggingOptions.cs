@@ -280,9 +280,6 @@ namespace RoboSharp
             return flags;
         }
 
-        /// <summary> Encase the LogPath in quotes if needed </summary>
-        internal static string WrapPath(string logPath) => (!logPath.StartsWith("\"") && logPath.Contains(" ")) ? $"\"{logPath}\"" : logPath;
-
         internal string Parse()
         {
             var options = new StringBuilder();
@@ -312,13 +309,13 @@ namespace RoboSharp
             if (ShowEstimatedTimeOfArrival)
                 options.Append(SHOW_ESTIMATED_TIME_OF_ARRIVAL);
             if (!LogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(LOG_PATH, WrapPath(LogPath)));
+                options.Append(string.Format(LOG_PATH, LogPath.WrapPath()));
             if (!AppendLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(APPEND_LOG_PATH, WrapPath(AppendLogPath)));
+                options.Append(string.Format(APPEND_LOG_PATH, AppendLogPath.WrapPath()));
             if (!UnicodeLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(UNICODE_LOG_PATH, WrapPath(UnicodeLogPath)));
+                options.Append(string.Format(UNICODE_LOG_PATH, UnicodeLogPath.WrapPath()));
             if (!AppendUnicodeLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(APPEND_UNICODE_LOG_PATH, WrapPath(AppendUnicodeLogPath)));
+                options.Append(string.Format(APPEND_UNICODE_LOG_PATH, AppendUnicodeLogPath.WrapPath()));
             if (OutputToRoboSharpAndLog && IsLogFileSpecified())
                 options.Append(OUTPUT_TO_ROBOSHARP_AND_LOG);
             if (NoJobHeader)

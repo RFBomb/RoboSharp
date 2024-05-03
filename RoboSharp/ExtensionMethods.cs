@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
+using RoboSharp;
 
 namespace RoboSharp
 {
@@ -51,6 +53,7 @@ namespace RoboSharp
         internal static bool IsPathFullyQualified(this string path)
         {
             if (path == null) throw new ArgumentNullException(nameof(path));
+            path = path.UnwrapQuotes();
             if (path.Length < 2) return false; //There is no way to specify a fixed path with one character (or less).
             if (path.Length == 2 && IsValidDriveChar(path[0]) && path[1] == System.IO.Path.VolumeSeparatorChar) return true; //Drive Root C:
             if (path.Length >= 3 && IsValidDriveChar(path[0]) && path[1] == System.IO.Path.VolumeSeparatorChar && IsDirectorySeperator(path[2])) return true; //Check for standard paths. C:\
@@ -62,9 +65,15 @@ namespace RoboSharp
         private static bool IsValidDriveChar(char c) => c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z';
 
 #else
-        internal static bool IsPathFullyQualified(this string path) => System.IO.Path.IsPathFullyQualified(path);
+        internal static bool IsPathFullyQualified(this string path) => System.IO.Path.IsPathFullyQualified(path.UnwrapQuotes());
 #endif
 
+        internal static string UnwrapQuotes(this string path)
+        {
+            if (path.StartsWith("\"") && path.EndsWith("\"")) return path.Substring(1, path.Length - 1);
+            return path;
+        }
+        
         internal static string RemoveFirstOccurrence(this string text, string removal, StringComparison comparison = StringComparison.InvariantCultureIgnoreCase)
         {
             if (string.IsNullOrWhiteSpace(text) | string.IsNullOrWhiteSpace(removal) || !text.Contains(removal, comparison))
@@ -79,11 +88,14 @@ namespace RoboSharp
             return text.Remove(0, trim.Length);
         }
 
-
         /// <summary> Encase the LogPath in quotes if needed </summary>
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
         [DebuggerHidden()]
-        internal static string WrapPath(this string logPath) => (!logPath.StartsWith("\"") && logPath.Contains(" ")) ? $"\"{logPath}\"" : logPath;
+        internal static string WrapPath(this string pathToWrap)
+        {
+            if (string.IsNullOrWhiteSpace(pathToWrap))return string.Empty;
+            return new StringBuilder().AppendWrappedPath(pathToWrap).ToString();
+        }
 
         /// <remarks> Extension method provided by RoboSharp package </remarks>
         /// <inheritdoc cref="System.String.IsNullOrWhiteSpace(string)"/>
@@ -219,6 +231,189 @@ namespace RoboSharp
         [DebuggerHidden()]
         internal static string ReplaceIfEmpty(this string str1, string str2) => String.IsNullOrWhiteSpace(str1) ? str2 ?? String.Empty : str1;
     }
+
+    internal static class StringBuilderExtensions
+    {
+        /// <summary> Encase the LogPath in quotes if needed </summary>
+        public static StringBuilder AppendWrappedPath(this StringBuilder builder, string pathToWrap)
+        {
+
+            if (string.IsNullOrWhiteSpace(pathToWrap)) return builder;
+
+            string trimmedPath = pathToWrap.Trim();
+            if (trimmedPath.Length > 3 && trimmedPath[0] == '"' && trimmedPath.Last() == '"')
+            {
+                return builder.Append(trimmedPath);
+            }
+            else if (trimmedPath.Any(Char.IsWhiteSpace))
+            {
+                builder.Append('"').Append(trimmedPath);
+                if (trimmedPath.Last() == '\\')
+                {
+                    // Fix for trailing slashes acting as escape characters and erroring out robocopy - Trim all trailing slashes, ensure 2 occur
+                    builder.TrimEnd('\\').Append(@"\\");
+                }
+                return builder.Append('"');
+            }
+            else
+                return builder.Append(trimmedPath);
+        }
+
+        public static IEnumerable<char> AsEnumerable(this StringBuilder builder)
+        {
+            int i = 0;
+            while (i < builder.Length)
+            {
+                yield return builder[i];
+                i++;
+            }
+            yield break;
+        }
+
+        /// <inheritdoc cref="IndexOf(StringBuilder, string, bool, int)"/>
+        public static int IndexOf(this StringBuilder builder, string text, bool isCaseSensitive = false)
+            => IndexOf(builder, text, isCaseSensitive, 0);
+
+        /// <returns>-1 if the text does not exist within the builder, otherwise the starting index</returns>
+        public static int IndexOf(this StringBuilder builder, string text, bool isCaseSensitive, int startIndex)
+        {
+            if (builder is null) throw new ArgumentNullException(nameof(builder));
+            if (startIndex > builder.Length) throw new ArgumentException("startIndex value greater than input string length");
+            if (string.IsNullOrEmpty(text)) return -1;
+            int builderIndex = startIndex;
+            int searchIndex = 0;
+            int? foundIndex = null;
+            char builderChar;
+            char searchChar;
+
+            while (builderIndex < builder.Length)
+            {
+                // Get Char
+                if (isCaseSensitive)
+                {
+                    builderChar = builder[builderIndex];
+                    searchChar = text[searchIndex];
+                }
+                else
+                {
+                    builderChar = char.ToLowerInvariant(builder[builderIndex]);
+                    searchChar = char.ToLowerInvariant(text[searchIndex]);
+                }
+                // Compare
+                if (builderChar.Equals(searchChar))
+                {
+                    searchIndex++;
+                    foundIndex ??= builderIndex;
+                    if (searchIndex >= text.Length)
+                        return foundIndex.Value;
+                }
+                else
+                {
+                    searchIndex = 0;
+                    foundIndex = null;
+                }
+                builderIndex++;
+            }
+            return -1;
+        }
+
+        public static StringBuilder SubString(this StringBuilder builder, int startIndex) => SubString(builder, startIndex, -1);
+        public static StringBuilder SubString(this StringBuilder builder, int startIndex, int length)
+        {
+            StringBuilder result = new StringBuilder();
+            int i = startIndex;
+            while (i < builder.Length && result.Length < length)
+            {
+                result.Append(builder[i]);
+                i++;
+            }
+            return result;
+        }
+        public static bool StartsWith(this StringBuilder builder, char c) => builder[0] == c;
+        public static bool StartsWith(this StringBuilder builder, string value, bool caseSensitive = false)
+        {
+            int index = 0;
+            foreach (char c in value)
+            {
+                if (caseSensitive)
+                {
+                    if (!c.Equals(builder[index]))
+                        return false;
+                }
+                else if (!char.ToLowerInvariant(c).Equals(char.ToLowerInvariant(builder[index])))
+                {
+                    return false;
+                }
+                index++;
+            }
+            return true;
+        }
+
+        public static bool EndsWith(this StringBuilder builder, char c) => builder[builder.Length - 1] == c;
+        public static bool EndsWith(this StringBuilder builder, string text)
+        {
+            if (builder.Length < text.Length) return false;
+            int i = 1;
+            foreach (char c in text.Reverse())
+                if (builder[builder.Length - i] == c)
+                    i++;
+                else
+                    return false;
+            return true;
+        }
+
+        public static StringBuilder Trim(this StringBuilder builder) => builder.TrimStart().TrimEnd();
+        public static StringBuilder TrimStart(this StringBuilder builder)
+        {
+            if (builder.Length < 1) return builder;
+            while (builder.Length > 0 && char.IsWhiteSpace(builder[0]))
+                builder.Remove(0, 1);
+            return builder;
+        }
+        public static StringBuilder TrimEnd(this StringBuilder builder)
+        {
+            if (builder.Length < 1) return builder;
+            int lastIndex;
+            while (builder.Length > 0 && char.IsWhiteSpace(builder[lastIndex = builder.Length - 1]))
+                builder.Remove(lastIndex, 1);
+            return builder;
+        }
+
+        public static StringBuilder Trim(this StringBuilder builder, params char[] c) => builder.TrimStart(c).TrimEnd(c);
+        public static StringBuilder TrimStart(this StringBuilder builder, params char[] c)
+        {
+            if (builder.Length < 1) return builder;
+            while (builder.Length > 0 && c.Contains(builder[0]))
+                builder.Remove(0, 1);
+            return builder;
+        }
+        public static StringBuilder TrimEnd(this StringBuilder builder, params char[] c)
+        {
+            if (builder.Length < 1) return builder;
+            int lastIndex;
+            while (builder.Length > 0 && c.Contains(builder[lastIndex = builder.Length - 1]))
+                builder.Remove(lastIndex, 1);
+            return builder;
+        }
+
+        public static StringBuilder TrimStart(this StringBuilder builder, string textToRemove)
+        {
+            if (builder.StartsWith(textToRemove))
+                builder.Remove(0, textToRemove.Length);
+            return builder;
+        }
+
+        /// <summary>
+        /// Trims, unwraps quotes, then trims again
+        /// </summary>
+        public static StringBuilder UnwrapQuotes(this StringBuilder builder)
+        {
+            builder.Trim();
+            if (builder.Length > 2 && builder[0] == '"' && builder[builder.Length - 1] == '0')
+                builder.Trim('"');
+            return builder.Trim();
+        }
+    }
 }
 
 namespace System.Threading
@@ -306,4 +501,5 @@ namespace System.Threading
             return Task.Delay(millisecondsTimeout, token).ContinueWith(t => t.Exception == default);
         }
     }
+
 }
