@@ -145,49 +145,44 @@ namespace RoboSharp
             return option;
         }
 
+        /// <summary>
+        /// Clean the directory to prevent this issue : 
+        /// <see href="https://superuser.com/questions/1544437/why-does-the-trailing-slash-on-the-target-confuse-robocopy"/>
+        /// </summary>
+        /// robocopy D:\SomeFolder\ "Q:\SomeOtherFolder\"
+        ///     Source = D:\SomeFolder\
+        ///     Dest = Q:\SomeOtherFolder"\
         public static string CleanDirectoryPath(this string path)
         {
-            // Get rid of leading/trailing for single and double quotes
-            path = path?.Trim('\'', '\"');
-
             //Validate against null / empty strings. 
             if (string.IsNullOrWhiteSpace(path)) return string.Empty;
 
-            // Get rid of padding
-            path = path.Trim();
+            StringBuilder sanitizer = new StringBuilder(path)
+                .Trim()
+                .TrimStart('"', ' ')                // Remove any leading spaces or quotes
+                .TrimEnd('"', ' ', Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);      // Get rid of leading/trailing for single and double quotes
 
-            // Get rid of trailing Directory Seperator Chars
-            path = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            //Sanitize invalid paths -- Convert E: to E:\
-            if (path.Length <= 2)
+            // Handle Local Path Roots -- C: -> C:\
+            if (sanitizer.Length == 2 && char.IsLetter(sanitizer[0]) && sanitizer[1] == ':')
             {
-                if (DriveRootRegex.IsMatch(path))
-                    return path.ToUpper() + '\\';
-                else
-                    return path;
+                sanitizer[0] = char.ToUpper(sanitizer[0]);
+                return sanitizer.Append(Path.DirectorySeparatorChar).ToString();
             }
 
             // Fix UNC paths that are the root directory of a UNC drive
-            if (Uri.TryCreate(path, UriKind.Absolute, out Uri URI) && URI.IsUnc)
-            {
-                if (path.EndsWith("$"))
-                {
-                    path += '\\';
-                }
-            }
+            //   //SomeServer/Drive$  -> //SomeServer/Drive$/
+            if (sanitizer.EndsWith('$'))
+                sanitizer.Append(Path.DirectorySeparatorChar);
 
-            return path;
+            return sanitizer.ToString();
         }
-
-        private static readonly Regex DriveRootRegex = new Regex("[A-Za-z]:", RegexOptions.Compiled);
 
         /// <summary>
         /// Check if the string ends with a directory seperator character
         /// </summary>
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
         [DebuggerHidden()]
-        public static bool EndsWithDirectorySeperator(this string path) => path.EndsWith(Path.DirectorySeparatorChar.ToString()) || path.EndsWith(Path.AltDirectorySeparatorChar.ToString());
+        public static bool EndsWithDirectorySeperator(this string path) => path.Last() == Path.DirectorySeparatorChar || path.Last() == Path.AltDirectorySeparatorChar;
 
         /// <summary>
         /// Convert <paramref name="StrTwo"/> into a char[]. Perform a ForEach( Char in strTwo) loop, and append any characters in Str2 to the end of this string if they don't already exist within this string.
@@ -248,11 +243,10 @@ namespace RoboSharp
             else if (trimmedPath.Any(Char.IsWhiteSpace))
             {
                 builder.Append('"').Append(trimmedPath);
-                if (trimmedPath.Last() == '\\')
-                {
-                    // Fix for trailing slashes acting as escape characters and erroring out robocopy - Trim all trailing slashes, ensure 2 occur
-                    builder.TrimEnd('\\').Append(@"\\");
-                }
+                
+                if (trimmedPath.Last() == '\\') // Trim any directory separators from the end of the path, then apply 2 to ensure the quotes are not escaped (which causes an error)
+                    builder.TrimEnd('\\').Append('\\').Append('\\');
+                
                 return builder.Append('"');
             }
             else
