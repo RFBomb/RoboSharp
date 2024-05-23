@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static RoboSharp.RoboCommandParserFunctions;
 
 namespace RoboSharp
 {
@@ -14,6 +12,8 @@ namespace RoboSharp
     /// </summary>
     public static class RoboCommandParser
     {
+        #region < Public Methods >
+
         /// <summary>Attempt the parse the <paramref name="command"/> into a new IRoboCommand object</summary>
         /// <returns>True if successful, otherwise false</returns>
         /// <param name="result">If successful, a new IRobocommand, otherwise null</param>
@@ -79,7 +79,6 @@ namespace RoboSharp
 
             // Filters SHOULD be immediately following the source/destination string at the very beginning of the text
             // Also Ensure white space at end of string because all constants have it
-            paths.SanitizedString.TrimStart().TrimStart("\"*.*\"").Trim().TrimStart("*.*").TrimStart(); // Remove the DEFAULT FILTER wildcard from the text
             var roboCommand = ParseOptionsInternal(paths, factory);
             Debugger.Instance.DebugMessage("RoboCommandParser.Parse completed successfully.\n");
             return roboCommand;
@@ -108,13 +107,13 @@ namespace RoboSharp
         private static IRoboCommand ParseOptionsInternal(ParsedSourceDest sourceDest, IRoboCommandFactory factory)
         {
             StringBuilder sanitizedCmd = sourceDest.SanitizedString.Trim().Append(' ');
-            var filters = RoboCommandParserFunctions.ExtractFileFilters(sanitizedCmd);
+            var filters = ExtractFileFilters(sanitizedCmd);
 
             // Get the command
             var roboCommand = factory.GetRoboCommand(sourceDest.Source, sourceDest.Destination, ParseCopyFlags(sanitizedCmd), ParseSelectionFlags(sanitizedCmd));
 
             // apply the file filters, if any were discovered
-            if (filters.Any()) roboCommand.CopyOptions.AddFileFilter(filters);
+            if (filters != null) roboCommand.CopyOptions.AddFileFilter(filters);
 
             // apply the remaining options
             return roboCommand
@@ -123,6 +122,8 @@ namespace RoboSharp
                 .ParseSelectionOptions(sanitizedCmd)
                 .ParseRetryOptions(sanitizedCmd);
         }
+
+        #endregion
 
         #region < Copy Options Parsing >
 
@@ -138,6 +139,38 @@ namespace RoboSharp
             cmd.RemoveString(CopyOptions.MOVE_FILES_AND_DIRECTORIES, () => flags |= CopyActionFlags.MoveFilesAndDirectories);
             cmd.RemoveString(CopyOptions.PURGE, () => flags |= CopyActionFlags.Purge);
             return flags;
+        }
+
+        //lang=regex
+        internal const string FileFilter = @"^\s*(?<filter>((?<Quotes>""[^""]+"") | (?<NoQuotes>((?<!\/)[^\/""])+) )+)"; // anything up until the first standalone option 
+
+        /// <summary>
+        /// File Filters to INCLUDE - These are always be at the beginning of the input string
+        /// </summary>
+        /// <param name="command">An input string with the source and destination removed. 
+        /// <br/>Valid : *.*  ""text"" /XF  -- Reads up until the first OPTION switch
+        /// <br/>Not Valid : robocopy Source destination -- these will be consdidered 3 seperate filters.
+        /// <br/>Not Valid : Source/destination -- these will be considered as file filters.
+        /// </param>
+        internal static IEnumerable<string> ExtractFileFilters(StringBuilder command)
+        {
+            const string debugFormat = "--> Found File Filter : {0}";
+            Debugger.Instance.DebugMessage($"Parsing Copy Options - Extracting File Filters");
+
+            var input = command.ToString();
+            var match = Regex.Match(input, FileFilter, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
+            string foundFilters = match.Groups["filter"].Value;
+            command.RemoveString(foundFilters);
+
+            if (match.Success && !string.IsNullOrWhiteSpace(foundFilters))
+            {
+                return ParseFilters(foundFilters, debugFormat).Where(ExtensionMethods.IsNotEmpty);
+            }
+            else
+            {
+                Debugger.Instance.DebugMessage($"--> No file filters found.");
+                return null;
+            }
         }
 
         /// <summary>
@@ -275,10 +308,59 @@ namespace RoboSharp
                 options.MinLastAccessDate = param;
             }
 
-            options.ExcludedDirectories.AddRange(RoboCommandParserFunctions.ExtractExclusionDirectories(command));
-            options.ExcludedFiles.AddRange(RoboCommandParserFunctions.ExtractExclusionFiles(command));
+            options.ExcludedDirectories.AddRange(ExtractExclusionDirectories(command));
+            options.ExcludedFiles.AddRange(ExtractExclusionFiles(command));
 
             return roboCommand;
+        }
+
+        //lang=regex
+        internal const string XF_Pattern = @"(?<filter>\/XF\s*( ((?<Quotes>""(\/\/[a-zA-Z]|[A-Z]:|[^/:\s])?[\w\*$\-\/\\.\s]+"") | (?<NoQuotes>(\/\/[a-zA-Z]|[A-Z]:|[^\/\:\s])?[\w*$\-\/\\.]+)) (\s*(?!\/[a-zA-Z])) )+)";
+        //lang=regex
+        internal const string XD_Pattern = @"(?<filter>\/XD\s*(( (?<Quotes>""(\/\/[a-zA-Z]|[A-Z]:|[^/:\s])?[\w\*$\-\/\\.\s]+"") | (?<NoQuotes>(\/\/[a-zA-Z]|[A-Z]:|[^\/\:\s])?[\w*$\-\/\\.]+)) (\s*(?!\/[a-zA-Z])) )+)";
+        
+        internal static IEnumerable<string> ExtractExclusionFiles(StringBuilder command)
+        {
+            // Get Excluded Files
+            Debugger.Instance.DebugMessage($"Parsing Selection Options - Extracting Excluded Files");
+            string input = command.ToString();
+            var matchCollection = Regex.Matches(input, XF_Pattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+            if (matchCollection.Count == 0) Debugger.Instance.DebugMessage($"--> No File Exclusions found.");
+            foreach (Match c in matchCollection)
+            {
+                string s = c.Groups["filter"].Value;
+                command.RemoveString(s);
+                s = s.TrimStart("/XF").Trim();
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    foreach (var item in ParseFilters(s, "---> Excluded File : {0}").Where(ExtensionMethods.IsNotEmpty))
+                    {
+                        yield return item;
+                    };
+                }
+            }
+        }
+
+        internal static IEnumerable<string> ExtractExclusionDirectories(StringBuilder command)
+        {
+            // Get Excluded Dirs
+            Debugger.Instance.DebugMessage($"Parsing Selection Options - Extracting Excluded Directories");
+            string input = command.ToString();
+            var matchCollection = Regex.Matches(input, XD_Pattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+            if (matchCollection.Count == 0) Debugger.Instance.DebugMessage($"--> No Directory Exclusions found.");
+            foreach (Match c in matchCollection)
+            {
+                string s = c.Groups["filter"].Value;
+                command.RemoveString(s);
+                s = s.TrimStart("/XD").Trim();
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    foreach (var item in ParseFilters(s, "---> Excluded Directory : {0}").Where(ExtensionMethods.IsNotEmpty))
+                    {
+                        yield return item;
+                    }
+                }
+            }
         }
 
         #endregion
@@ -340,5 +422,240 @@ namespace RoboSharp
             }
             return roboCommand;
         }
+
+        #region < Helper Methods / Parsing & Trimming >
+
+        /// <summary>
+        /// Trim robocopy from that beginning of the input string
+        /// </summary>
+        /// <returns>A StringBuilder instance that represents the trimmed string</returns>
+        internal static string TrimRobocopy(string input)
+        {
+            //lang=regex 
+            const string rc = @"^(?<rc>\s*((?<sQuote>"".+?[:$].+?robocopy(\.exe)?"")|(?<sNoQuote>([^:*?""<>|\s]+?[:$][^:*?<>|\s]+?)?robocopy(\.exe)?))\s+)";
+            var match = Regex.Match(input, rc, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+            return match.Success ? input.TrimStart(match.Groups[0].Value) : input;
+        }
+
+        /// <summary>
+        /// Parse the string, extracting individual filters out to an IEnumerable string
+        /// </summary>
+        internal static IEnumerable<string> ParseFilters(string stringToParse, string debugFormat)
+        {
+            StringBuilder filterBuilder = new StringBuilder();
+            bool isQuoted = false;
+            bool isBuilding = false;
+            foreach (char c in stringToParse)
+            {
+                if (isQuoted && c == '"')
+                {
+                    filterBuilder.Append(c);
+                    yield return NextFilter();
+                }
+                else if (isQuoted)
+                {
+                    filterBuilder.Append(c);
+                }
+                else if (c == '"')
+                {
+                    isQuoted = true;
+                    isBuilding = true;
+                    filterBuilder.Append(c);
+                }
+                else if (char.IsWhiteSpace(c))
+                {
+                    if (isBuilding) // unquoted white space indicates end of one filter and start of next. Otherwise ignore whitepsace.
+                        yield return NextFilter();
+                }
+                else
+                {
+                    isBuilding = true;
+                    filterBuilder.Append(c);
+                }
+            }
+            
+            if (isBuilding) yield return NextFilter();
+            yield break;
+
+            string NextFilter()
+            {
+                isQuoted = false;
+                isBuilding = false;
+                string value = filterBuilder.ToString();
+                Debugger.Instance.DebugMessage(string.Format(debugFormat, value));
+                filterBuilder.Clear();
+                return value;
+            }
+        }
+
+        /// <summary> Attempt to extract the parameter from a format pattern string </summary>
+        /// <param name="inputText">The stringbuilder to evaluate and remove the substring from</param>
+        /// <param name="parameterFormatString">the parameter to extract. Example :   /LEV:{0}</param>
+        /// <param name="value">The extracted value. (only if returns true)</param>
+        /// <returns>True if the value was extracted, otherwise false.</returns>
+        internal static bool TryExtractParameter(StringBuilder inputText, string parameterFormatString, out string value)
+        {
+            value = string.Empty;
+            string prefix = parameterFormatString.Substring(0, parameterFormatString.IndexOf('{')).TrimEnd('{').Trim(); // Turn /LEV:{0} into /LEV:
+
+            int prefixIndex = inputText.IndexOf(prefix, false);
+            if (prefixIndex < 0)
+            {
+                Debugger.Instance.DebugMessage($"--> Switch {prefix} not detected.");
+                return false;
+            }
+
+            int lastIndex = inputText.IndexOf(" /", false, prefixIndex + 1);
+            int substringLength = lastIndex < 0 ? inputText.Length : lastIndex - prefixIndex + 1;
+            var result = inputText.SubString(prefixIndex, substringLength);
+            value = result.RemoveSafe(0, prefix.Length).Trim().ToString();
+            Debugger.Instance.DebugMessage($"--> Switch {prefix} found. Value : {value}");
+            inputText.RemoveSafe(prefixIndex, substringLength);
+            return true;
+        }
+
+        /// <summary>
+        /// Helper object that reports the result from <see cref="Parse(string)"/>
+        /// </summary>
+        internal readonly struct ParsedSourceDest
+        {
+            public readonly string Source;
+            public readonly string Destination;
+            public readonly string InputString;
+            public readonly StringBuilder SanitizedString;
+
+            private ParsedSourceDest(string source, string dest, string input, StringBuilder sanitized)
+            {
+                Source = source;
+                Destination = dest;
+                InputString = input;
+                SanitizedString = sanitized;
+            }
+
+            //SomeServer/HiddenDrive$/RootFolder   //SomeServer\RootFolder
+            //lang=regex                        no quotes                                               quotes
+            internal const string uncRegex = @"([\\\/]{2}[^*:?""<>|$\s]+?[$]?[\\\/]?([^*:?""<>|\s]+)?) | (""[\\\/]{2}[^*:?""<>|$]+?[$]?[\\\/]?([^*:?""<>|]+)?"")";
+
+            // c:\  D:/SomeFolder  "X:\Spaced Folder Name"
+            //lang=regex                          no quotes                           quotes
+            internal const string localRegex = @"([a-zA-Z][:][\\\/]([^:*?""<>|\s]+)?) | (""([a-zA-Z][:][\\\/]([^:*?""<>|]+)?)"")";
+            private const string allowedPathsRegex = @"""\s*"" | " + localRegex + " | " + uncRegex;
+
+            internal const string fullRegex = @"^\s* (?<source>" + allowedPathsRegex + @") \s+ (?<dest>" + allowedPathsRegex + @")";
+            internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @")$";
+            internal const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
+
+            /// <returns>Strips out any Source/Dest information, then returns a new object</returns>
+            public static ParsedSourceDest ParseOptionsOnly(string inputText)
+            {
+                string trimmedText = TrimRobocopy(inputText).TrimStart();
+                StringBuilder builder = new StringBuilder(trimmedText);
+                Match fullMatch = Regex.Match(trimmedText, fullRegex, regexOptions);
+                if (fullMatch.Success)
+                {
+                    builder.Remove(0, fullMatch.Length).TrimStart();
+                }
+                else
+                {
+                    Match partialMatch = Regex.Match(trimmedText, $"^({allowedPathsRegex})", regexOptions);
+                    if (partialMatch.Success)
+                    {
+                        builder.Remove(0, partialMatch.Length).TrimStart();
+                    }
+                }
+                return new ParsedSourceDest(string.Empty, string.Empty, inputText, builder);
+            }
+
+            /// <summary>
+            /// Parse the input text, extracting the Source and Destination info.
+            /// </summary>
+            /// <param name="inputText">The input text to parse. 
+            /// <br/>The expected pattern is :  robocopy "SOURCE" "DESTINATION" 
+            /// <br/> - 'robocopy' is optional, but the source/destination must appear in the specified order at the beginning of the text. 
+            /// <br/> - Quotes are only required if the path has whitespace.
+            /// </param>
+            /// <returns>A new <see cref="ParsedSourceDest"/> struct with the results</returns>
+            /// <exception cref="RoboCommandParserException"/>
+            public static ParsedSourceDest Parse(string inputText)
+            {
+                var match = Regex.Match(inputText, fullRegex, regexOptions);
+                RoboCommandParserException ex;
+                if (!match.Success)
+                {
+                    if (Regex.IsMatch(inputText, destinationUndefinedRegex, regexOptions))
+                    {
+                        ex = new RoboCommandParserException("Invalid command string - Source was provided without providing Destination");
+                    }
+                    else if (Regex.IsMatch(inputText, $"^\\s* .+? \\s* {allowedPathsRegex}", regexOptions))
+                    {
+                        ex = new RoboCommandParserException("Invalid data present in command options prior to a source/destination paths");
+                    }
+                    else if (Regex.IsMatch(inputText, @"^\s* ( ([^:""<>|/]+?\S[^:""<>|]+) | (/[A-Za-z]{1,2}) )", regexOptions))
+                    {
+                        // Checks if unquoted source/destination is empty, and string has file filters or some switch specified
+                        return new ParsedSourceDest(string.Empty, string.Empty, inputText, new StringBuilder(inputText));
+                    }
+                    else
+                    {
+                        ex = new RoboCommandParserException("Source and Destination were unable to be parsed.");
+                    }
+                    ex.AddData("input", inputText);
+                    throw ex;
+                }
+
+                string rawSource = match.Groups["source"].Value;
+                string rawDest = match.Groups["dest"].Value;
+                string source = rawSource.CleanDirectoryPath();
+                string dest = rawDest.CleanDirectoryPath();
+
+                // Validate source and destination - both must be empty, or both must be fully qualified
+                bool sourceEmpty = string.IsNullOrWhiteSpace(source);
+                bool destEmpty = string.IsNullOrWhiteSpace(dest);
+                bool sourceQualified = source.IsPathFullyQualified();
+                bool destQualified = dest.IsPathFullyQualified();
+
+                StringBuilder commandBuilder = new StringBuilder(inputText);
+
+                if (sourceQualified && destQualified)
+                {
+                    Debugger.Instance.DebugMessage($"--> Source and Destination Pattern Match Success:");
+                    Debugger.Instance.DebugMessage($"----> Source : {source}");
+                    Debugger.Instance.DebugMessage($"----> Destination : {dest}");
+                    commandBuilder.Remove(0, rawSource.Length).TrimStart();
+                    commandBuilder.Remove(0, rawDest.Length).TrimStart();
+                    return new ParsedSourceDest(source, dest, inputText, commandBuilder);
+                }
+                else if (sourceEmpty && destEmpty)
+                {
+                    Debugger.Instance.DebugMessage($"--> Source and Destination Pattern Match Success: Neither specified");
+                    if (match.Success)
+                    {
+                        commandBuilder.Remove(0, rawSource.Length).TrimStart();
+                        commandBuilder.Remove(0, rawDest.Length).TrimStart();
+                    }
+                    return new ParsedSourceDest(string.Empty, string.Empty, inputText, commandBuilder);
+                }
+                else
+                {
+                    Debugger.Instance.DebugMessage($"--> Unable to detect a valid Source/Destination pattern match -- Input text : {inputText}");
+                    Debugger.Instance.DebugMessage($"----> Source : {source}");
+                    Debugger.Instance.DebugMessage($"----> Destination : {dest}");
+                    ex = new RoboCommandParserException(message: true switch
+                    {
+                        true when sourceEmpty && destQualified => "Destination is fully qualified, but Source is empty. See exception data.",
+                        true when destEmpty && sourceQualified => "Source is fully qualified, but Destination is empty. See exception data.",
+                        true when !sourceQualified && !destQualified => "Source and Destination are not fully qualified. See exception data.",
+                        true when !sourceQualified => "Source is not fully qualified. See exception data. ",
+                        true when !destQualified => "Destination is not fully qualified. See exception data.",
+                        _ => "Source / Destination Parsing Error",
+                    });
+                    ex.AddData("Input Text", inputText);
+                    ex.AddData("Parsed Source", rawSource);
+                    ex.AddData("Parsed Destination", rawDest);
+                    throw ex;
+                }
+            }
+        }
+        #endregion
     }
 }
