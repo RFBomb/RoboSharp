@@ -25,8 +25,8 @@ namespace RoboSharp
         /// </summary>
         public CopyOptions() 
         {
-            this.Source = string.Empty;
-            this.Destination = string.Empty;
+            this._source = string.Empty;
+            this._destination = string.Empty;
             this.runHours = string.Empty;
         }
 
@@ -72,7 +72,7 @@ namespace RoboSharp
             EnableRestartMode = copyOptions.EnableRestartMode;
             EnableRestartModeWithBackupFallback = copyOptions.EnableRestartModeWithBackupFallback;
             FatFiles = copyOptions.FatFiles;
-            FileFilter = copyOptions.FileFilter;
+            FileFilter = copyOptions._fileFilter;
             FixFileSecurityOnAllFiles = copyOptions.FixFileSecurityOnAllFiles;
             FixFileTimesOnAllFiles = copyOptions.FixFileTimesOnAllFiles;
             InterPacketGap = copyOptions.InterPacketGap;
@@ -141,10 +141,6 @@ namespace RoboSharp
         /// The Default File Filter used that will allow copying of all files
         /// </summary>
         public const string DefaultFileFilter = "*.*" ;
-        private static IEnumerable<string> DefaultFileFilterEnumerable()
-        {
-            yield return DefaultFileFilter;
-        }
 
         private IEnumerable<string> _fileFilter;
         private string copyFlags = "DAT";
@@ -730,19 +726,25 @@ namespace RoboSharp
 
         /// <summary>
         /// Add file filters to the <see cref="FileFilter"/> property.
-        /// <para/> Note: If the FileFilter contains only <see cref="DefaultFileFilter"/>, it will be replaced with the new collection.
-        /// <br/>Otherwise, the <paramref name="filters"/> will be added to the collection.
+        /// <para/>If filters have not been specified, this collection is set to the property value.
+        /// <br/>Otherwise, updates the property with a new collection, where the supplied <paramref name="filters"/> concats to the existing collection
         /// </summary>
         /// <param name="filters"><inheritdoc cref="FileFilter" path="/summary"/></param>
-        public void AddFileFilter(params string[] filters) => AddFileFilter(filters);
+        public void AddFileFilter(params string[] filters) => AddFileFilter(filters.AsEnumerable());
 
-        /// <inheritdoc cref="AddFileFilter(string[])">
+        /// <inheritdoc cref="AddFileFilter(string[])"/>
         public void AddFileFilter(IEnumerable<string> filters)
         {
             if (_fileFilter is null)
                 FileFilter = filters;
             else
                 FileFilter = _fileFilter.Concat(filters);
+        }
+
+        /// <returns>An empty filter collection - providing no arguments is the same as *.* </returns>
+        private static IEnumerable<string> DefaultFileFilterEnumerable()
+        {
+            yield break;
         }
 
         #region < Flags >
@@ -852,9 +854,8 @@ namespace RoboSharp
             RemoveAttributes = RemoveAttributes.CombineCharArr(copyOptions.RemoveAttributes);
 
             //IEnumerable
-            var list = new List<String>(FileFilter);
-            list.AddRange(copyOptions.FileFilter);
-            FileFilter = list;
+            if (copyOptions._fileFilter != null)
+                AddFileFilter(copyOptions._fileFilter);
 
             //Bool
             CheckPerFile |= copyOptions.CheckPerFile;
