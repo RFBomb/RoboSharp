@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using RoboSharp;
 
 namespace RoboSharp
 {
@@ -45,33 +44,42 @@ namespace RoboSharp
             }
         }
 
-        internal static string Trim(this string text, char character)
+
+#endif
+
+        internal static IEnumerable<T> WhereNot<T>(this IEnumerable<T> collection, Predicate<T> where)
         {
-            return text.Trim(trimChars: new char[] { character });
+            foreach(T item in collection)
+                if (!where(item))
+                    yield return item;
         }
 
+        /// <summary>
+        /// Check if the path is full qualified as far as robocopy is concerned
+        /// </summary>
+        /// <remarks>
+        /// Strings less than 3 characters are always false.
+        /// Strings such as 'C:' should be avoided because it can cause robocopy to use the CURRENT DIRECTORY instead of the root directory
+        /// </remarks>
         internal static bool IsPathFullyQualified(this string path)
         {
-            if (path == null) throw new ArgumentNullException(nameof(path));
-            path = path.UnwrapQuotes();
-            if (path.Length < 2) return false; //There is no way to specify a fixed path with one character (or less).
-            if (path.Length == 2 && IsValidDriveChar(path[0]) && path[1] == System.IO.Path.VolumeSeparatorChar) return true; //Drive Root C:
+            if (path is null) throw new ArgumentNullException(nameof(path));
+            if (path.Length < 3) return false; //There is no way to specify a fixed path with one character (or less).
             if (path.Length >= 3 && IsValidDriveChar(path[0]) && path[1] == System.IO.Path.VolumeSeparatorChar && IsDirectorySeperator(path[2])) return true; //Check for standard paths. C:\
             if (path.Length >= 3 && IsDirectorySeperator(path[0]) && IsDirectorySeperator(path[1])) return true; //This is start of a UNC path
             return false; //Default
         }
 
-        private static bool IsDirectorySeperator(char c) => c == System.IO.Path.DirectorySeparatorChar | c == System.IO.Path.AltDirectorySeparatorChar;
+        private static bool IsDirectorySeperator(char c) => c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar;
         private static bool IsValidDriveChar(char c) => c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z';
+        internal static bool EndsWith(this string text, char c) => text.Length >= 1 && text[text.Length - 1] == c;
 
-#else
-        internal static bool IsPathFullyQualified(this string path) => System.IO.Path.IsPathFullyQualified(path.UnwrapQuotes());
-#endif
-
+        /// <summary>
+        /// Trims the string, removes any double-quotes, trims again
+        /// </summary>
         internal static string UnwrapQuotes(this string path)
         {
-            if (path.StartsWith("\"") && path.EndsWith("\"")) return path.Substring(1, path.Length - 1);
-            return path;
+            return path.Trim().Trim('"').Trim();
         }
         
         internal static string RemoveFirstOccurrence(this string text, string removal, StringComparison comparison = StringComparison.InvariantCultureIgnoreCase)
@@ -88,21 +96,16 @@ namespace RoboSharp
             return text.Remove(0, trim.Length);
         }
 
-        /// <summary> Encase the LogPath in quotes if needed </summary>
-        [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-        [DebuggerHidden()]
-        internal static string WrapPath(this string pathToWrap)
-        {
-            if (string.IsNullOrWhiteSpace(pathToWrap))return string.Empty;
-            return new StringBuilder().AppendWrappedPath(pathToWrap).ToString();
-        }
-
         /// <remarks> Extension method provided by RoboSharp package </remarks>
         /// <inheritdoc cref="System.String.IsNullOrWhiteSpace(string)"/>
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
         [DebuggerHidden()]
         internal static bool IsNullOrWhiteSpace(this string value) => string.IsNullOrWhiteSpace(value);
 
+        /// <summary> Check if string is null or whitespace. </summary>
+        /// <returns>Opposite of <see cref="string.IsNullOrWhiteSpace(string?)"/></returns>
+        [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
+        [DebuggerHidden()]
         internal static bool IsNotEmpty(this string value) => !string.IsNullOrWhiteSpace(value);
 
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
@@ -146,43 +149,11 @@ namespace RoboSharp
         }
 
         /// <summary>
-        /// Clean the directory to prevent this issue : 
-        /// <see href="https://superuser.com/questions/1544437/why-does-the-trailing-slash-on-the-target-confuse-robocopy"/>
-        /// </summary>
-        /// robocopy D:\SomeFolder\ "Q:\SomeOtherFolder\"
-        ///     Source = D:\SomeFolder\
-        ///     Dest = Q:\SomeOtherFolder"\
-        public static string CleanDirectoryPath(this string path)
-        {
-            //Validate against null / empty strings. 
-            if (string.IsNullOrWhiteSpace(path)) return string.Empty;
-
-            StringBuilder sanitizer = new StringBuilder(path)
-                .Trim()
-                .TrimStart('"', ' ')                // Remove any leading spaces or quotes
-                .TrimEnd('"', ' ', Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);      // Get rid of leading/trailing for single and double quotes
-
-            // Handle Local Path Roots -- C: -> C:\
-            if (sanitizer.Length == 2 && char.IsLetter(sanitizer[0]) && sanitizer[1] == ':')
-            {
-                sanitizer[0] = char.ToUpper(sanitizer[0]);
-                return sanitizer.Append(Path.DirectorySeparatorChar).ToString();
-            }
-
-            // Fix UNC paths that are the root directory of a UNC drive
-            //   //SomeServer/Drive$  -> //SomeServer/Drive$/
-            if (sanitizer.EndsWith('$'))
-                sanitizer.Append(Path.DirectorySeparatorChar);
-
-            return sanitizer.ToString();
-        }
-
-        /// <summary>
         /// Check if the string ends with a directory seperator character
         /// </summary>
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
         [DebuggerHidden()]
-        public static bool EndsWithDirectorySeperator(this string path) => path.Last() == Path.DirectorySeparatorChar || path.Last() == Path.AltDirectorySeparatorChar;
+        public static bool EndsWithDirectorySeperator(this string path) => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar);
 
         /// <summary>
         /// Convert <paramref name="StrTwo"/> into a char[]. Perform a ForEach( Char in strTwo) loop, and append any characters in Str2 to the end of this string if they don't already exist within this string.
@@ -196,14 +167,7 @@ namespace RoboSharp
         {
             if (String.IsNullOrWhiteSpace(StrTwo)) return StrOne;
             if (String.IsNullOrWhiteSpace(StrOne)) return StrTwo ?? StrOne;
-            string ret = StrOne;
-            char[] S2 = StrTwo.ToArray();
-            foreach (char c in S2)
-            {
-                if (!ret.Contains(c))
-                    ret += c;
-            }
-            return ret;
+            return new StringBuilder().Append(StrOne.Union(StrTwo).WhereNot(Char.IsWhiteSpace).ToArray()).ToString(); // Union the two strings
         }
 
         /// <summary>
@@ -229,23 +193,74 @@ namespace RoboSharp
 
     internal static class StringBuilderExtensions
     {
+        internal static void Add(this List<string> list, StringBuilder builder) => list.Add(builder.ToString());
+
+        /// <summary>
+        /// Evaluates the <paramref name="directoryPath"/> and sanitizes it if necessary.
+        /// </summary>
+        /// <returns>
+        /// - If the string is null or empty : returns string.empty
+        /// <br/> - If the string contains no double-quotes and no white-space : returns input string (assumes valid input)
+        /// <br/> - Otherwise trims all white-space, and double-quotes from the beginning and end.
+        /// </returns>
+        public static string CleanDirectoryPath(this string directoryPath)
+        {
+            //Validate against null / empty strings. 
+            if (string.IsNullOrWhiteSpace(directoryPath)) return string.Empty;
+
+            // if path does not contain quotes or white-space, no processing required (assume ok)
+            if (!(directoryPath.Any(Char.IsWhiteSpace) || directoryPath.Contains('"'))) return directoryPath;
+
+            StringBuilder sanitizer = new StringBuilder(directoryPath).Trim(' ', '"');
+
+            // Handle Local Path Roots -- c: -> C:\
+            if (sanitizer.Length == 2 && char.IsLetter(sanitizer[0]) && sanitizer[1] == ':')
+            {
+                sanitizer[0] = char.ToUpper(sanitizer[0]);
+                sanitizer.Append(Path.DirectorySeparatorChar);
+            }
+            
+            return sanitizer.ToString();
+        }
+
         /// <summary> Encase the LogPath in quotes if needed </summary>
+        /// <inheritdoc cref="AppendWrappedPath(StringBuilder, string)"/>
+        [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
+        internal static StringBuilder WrapPath(this string pathToWrap)
+        {
+            return new StringBuilder().AppendWrappedPath(pathToWrap);
+        }
+
+        /// <summary> 
+        /// Append the <paramref name="pathToWrap"/> to the <paramref name="builder"/>, surrounding it with quotes if needed.
+        /// <br/>If wrapping is required, sanitizes to prevent escaping the quotations ( see remarks )
+        /// </summary>
+        /// <remarks>
+        /// - Directory Paths should have already been sanitizied via <see cref="CleanDirectoryPath(string)"/> 
+        /// <br/> - Clean the directory to prevent this issue : <see href="https://superuser.com/questions/1544437/why-does-the-trailing-slash-on-the-target-confuse-robocopy"/>
+        /// </remarks>
+        /// Issue being resolved:
+        ///     robocopy D:\SomeFolder\ "Q:\SomeOtherFolder\"
+        ///     Resulting Source = D:\SomeFolder\
+        ///     Resulting Dest = Q:\SomeOtherFolder"  ( Note quote is present due to escape character \ )
         public static StringBuilder AppendWrappedPath(this StringBuilder builder, string pathToWrap)
         {
-
             if (string.IsNullOrWhiteSpace(pathToWrap)) return builder;
 
-            string trimmedPath = pathToWrap.Trim();
-            if (trimmedPath.Length > 3 && trimmedPath[0] == '"' && trimmedPath.Last() == '"')
+            // Check if already wrapped
+            var trimmedPath = pathToWrap.Trim();
+            if (trimmedPath.Length > 3 && trimmedPath[0] == '"' && trimmedPath.EndsWith('"'))
             {
                 return builder.Append(trimmedPath);
             }
+            // Wrap if contains whitespace
             else if (trimmedPath.Any(Char.IsWhiteSpace))
             {
                 builder.Append('"').Append(trimmedPath);
                 
-                if (trimmedPath.Last() == '\\') // Trim any directory separators from the end of the path, then apply 2 to ensure the quotes are not escaped (which causes an error)
-                    builder.TrimEnd('\\').Append('\\').Append('\\');
+                // Trim any directory separators from the end of the path, then apply the '/' character, which does not act as an escape character
+                if (builder.EndsWith('\\')) 
+                    builder.TrimEnd('\\', '/').Append('/');
                 
                 return builder.Append('"');
             }
@@ -311,9 +326,51 @@ namespace RoboSharp
             return -1;
         }
 
-        public static StringBuilder SubString(this StringBuilder builder, int startIndex) => SubString(builder, startIndex, -1);
+        /// <summary>
+        /// <see cref="StringBuilder.Remove(int, int)"/> but handles the <paramref name="length"/> exceeding character count
+        /// </summary>
+        internal static StringBuilder RemoveSafe(this StringBuilder builder, int index, int length)
+        {
+            if (index + length > builder.Length)
+                return builder.Remove(index, builder.Length - index);
+            else
+                return builder.Remove(index, length);
+        }
+
+        /// <inheritdoc cref="RemoveString(StringBuilder, string, Action)"/>
+        internal static bool RemoveString(this StringBuilder builder, string searchText)
+        {
+            return RemoveString(builder, searchText, null);
+        }
+
+        /// <returns>True if the first occurence was removed, otherwise false</returns>
+        internal static bool RemoveString(this StringBuilder builder, string searchText, Action actionIfTrue)
+        {
+            int index = builder.IndexOf(searchText, false);
+            Debugger.Instance.DebugMessage($"--> Switch {searchText}{(index >= 0 ? "" : " not")} detected.");
+            if (index >= 0)
+            {
+                builder.Remove(index, searchText.Length);
+                actionIfTrue?.Invoke();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static StringBuilder SubString(this StringBuilder builder, int startIndex)
+        {
+            if (startIndex < 0 | startIndex > builder.Length) throw new ArgumentException("index out of range", nameof(startIndex));
+            StringBuilder subBuilder = new StringBuilder();
+            foreach(char c in builder.AsEnumerable().Skip(startIndex))
+                subBuilder.Append(c);
+            return subBuilder;
+        }
         public static StringBuilder SubString(this StringBuilder builder, int startIndex, int length)
         {
+            if (startIndex < 0 | startIndex > builder.Length) throw new ArgumentException("index out of range", nameof(startIndex));
             StringBuilder result = new StringBuilder();
             int i = startIndex;
             while (i < builder.Length && result.Length < length)
@@ -357,37 +414,55 @@ namespace RoboSharp
         }
 
         public static StringBuilder Trim(this StringBuilder builder) => builder.TrimStart().TrimEnd();
+        public static StringBuilder Trim(this StringBuilder builder, params char[] c) => builder.TrimStart(c).TrimEnd(c);
+        
         public static StringBuilder TrimStart(this StringBuilder builder)
         {
-            if (builder.Length < 1) return builder;
-            while (builder.Length > 0 && char.IsWhiteSpace(builder[0]))
-                builder.Remove(0, 1);
-            return builder;
+            // adapted from System.String.Trim
+            if (builder is null || builder.Length < 1) return builder;
+            int i;
+            for (i = 0; i < builder.Length && char.IsWhiteSpace(builder[i]); i++) { } 
+            return builder.Remove(0, i);
         }
-        public static StringBuilder TrimEnd(this StringBuilder builder)
-        {
-            if (builder.Length < 1) return builder;
-            int lastIndex;
-            while (builder.Length > 0 && char.IsWhiteSpace(builder[lastIndex = builder.Length - 1]))
-                builder.Remove(lastIndex, 1);
-            return builder;
-        }
-
-        public static StringBuilder Trim(this StringBuilder builder, params char[] c) => builder.TrimStart(c).TrimEnd(c);
+        
         public static StringBuilder TrimStart(this StringBuilder builder, params char[] c)
         {
-            if (builder.Length < 1) return builder;
-            while (builder.Length > 0 && c.Contains(builder[0]))
-                builder.Remove(0, 1);
-            return builder;
+            // adapted from System.String.Trim(char)
+            if (builder is null || builder.Length < 1) return builder;
+            bool trimWhiteSpace = c.Contains(' ');
+            int i;
+            for (i = 0;
+                i < builder.Length && (c.Contains(builder[i]) || (trimWhiteSpace && Char.IsWhiteSpace(builder[i])));
+                i++) 
+            { }
+            return builder.Remove(0, i);
         }
+
+        public static StringBuilder TrimEnd(this StringBuilder builder)
+        {
+            // adapted from System.String.Trim
+            if (builder is null || builder.Length < 1) return builder;
+            int i = builder.Length - 1;
+            while (i >= 0 && char.IsWhiteSpace(builder[i])) { i--; }
+
+            if (i < 0)
+                return builder.Clear();
+            else
+                return builder.Remove(i + 1, builder.Length - i - 1);
+        }
+
         public static StringBuilder TrimEnd(this StringBuilder builder, params char[] c)
         {
-            if (builder.Length < 1) return builder;
-            int lastIndex;
-            while (builder.Length > 0 && c.Contains(builder[lastIndex = builder.Length - 1]))
-                builder.Remove(lastIndex, 1);
-            return builder;
+            // adapted from System.String.Trim(char)
+            if (builder is null || builder.Length < 1) return builder;
+            bool trimWhiteSpace = c.Contains(' ');
+            int i = builder.Length - 1;
+            while(i >= 0 && (c.Contains(builder[i]) || (trimWhiteSpace && Char.IsWhiteSpace(builder[i])))) { i--; }
+
+            if (i < 0 )
+                return builder.Clear();
+            else
+                return builder.Remove(i + 1, builder.Length - i - 1);
         }
 
         public static StringBuilder TrimStart(this StringBuilder builder, string textToRemove)
@@ -395,17 +470,6 @@ namespace RoboSharp
             if (builder.StartsWith(textToRemove))
                 builder.Remove(0, textToRemove.Length);
             return builder;
-        }
-
-        /// <summary>
-        /// Trims, unwraps quotes, then trims again
-        /// </summary>
-        public static StringBuilder UnwrapQuotes(this StringBuilder builder)
-        {
-            builder.Trim();
-            if (builder.Length > 2 && builder[0] == '"' && builder[builder.Length - 1] == '0')
-                builder.Trim('"');
-            return builder.Trim();
         }
     }
 }
