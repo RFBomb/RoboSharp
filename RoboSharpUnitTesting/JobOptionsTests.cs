@@ -97,9 +97,9 @@ namespace RoboSharp.UnitTests
             Assert.IsTrue(File.Exists(GetJobFilePath()), "\n Job File was not saved.");
 
             var jb = JobFile.ParseJobFile(GetJobFilePath());
-            Assert.AreEqual(savePaths, jb.CopyOptions.Source == Test_Setup.Source_Standard, "Source was " + (savePaths ? "not saved" : "saved when set to not save"));
-            Assert.AreEqual(savePaths, jb.CopyOptions.Destination == dest, "Destination was " + (savePaths ? "not saved" : "saved when set to not save"));
 
+            Assert.AreEqual(savePaths, jb.CopyOptions.Source.TrimEnd('\\') == Test_Setup.Source_Standard.TrimEnd('\\'), "Source was " + (savePaths ? "not saved" : "saved when set to not save"));
+            Assert.AreEqual(savePaths, jb.CopyOptions.Destination.TrimEnd('\\') == dest.TrimEnd('\\'), "Destination was " + (savePaths ? "not saved" : "saved when set to not save"));
         }
 
         [DataRow(null, DisplayName = "Bad File Extension")]
@@ -138,7 +138,7 @@ namespace RoboSharp.UnitTests
             Assert.IsTrue(Q.Count() == 2);
             Assert.IsNotNull(Q.First());
             Assert.IsNotNull(Q.Last());
-            Assert.IsTrue(Q.Last().CopyOptions.Source == Test_Setup.Source_Standard);
+            Assert.IsTrue(Q.Last().CopyOptions.Source.TrimEnd('\\') == Test_Setup.Source_Standard.TrimEnd('\\'));
         }
 
     }
