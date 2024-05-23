@@ -94,10 +94,10 @@ namespace RoboSharp
             var options = new StringBuilder();
 
             if (RetryCount >= 0 && RetryCount != 1000000)
-                options.Append(string.Format(RETRY_COUNT, RetryCount));
+                options.AppendFormat(RETRY_COUNT, RetryCount);
             
             if (RetryWaitTime >= 0 && RetryWaitTime != 30)
-                options.Append(string.Format(RETRY_WAIT_TIME, RetryWaitTime));
+                options.AppendFormat(RETRY_WAIT_TIME, RetryWaitTime);
 
             if (SaveToRegistry && VersionManager.IsPlatformWindows)
                 options.Append(SAVE_TO_REGISTRY);

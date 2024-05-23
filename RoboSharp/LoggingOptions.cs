@@ -309,13 +309,13 @@ namespace RoboSharp
             if (ShowEstimatedTimeOfArrival)
                 options.Append(SHOW_ESTIMATED_TIME_OF_ARRIVAL);
             if (!LogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(LOG_PATH, LogPath.WrapPath()));
+                options.AppendFormat(LOG_PATH, LogPath.WrapPath());
             if (!AppendLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(APPEND_LOG_PATH, AppendLogPath.WrapPath()));
+                options.AppendFormat(APPEND_LOG_PATH, AppendLogPath.WrapPath());
             if (!UnicodeLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(UNICODE_LOG_PATH, UnicodeLogPath.WrapPath()));
+                options.AppendFormat(UNICODE_LOG_PATH, UnicodeLogPath.WrapPath());
             if (!AppendUnicodeLogPath.IsNullOrWhiteSpace())
-                options.Append(string.Format(APPEND_UNICODE_LOG_PATH, AppendUnicodeLogPath.WrapPath()));
+                options.AppendFormat(APPEND_UNICODE_LOG_PATH, AppendUnicodeLogPath.WrapPath());
             if (OutputToRoboSharpAndLog && IsLogFileSpecified())
                 options.Append(OUTPUT_TO_ROBOSHARP_AND_LOG);
             if (NoJobHeader)

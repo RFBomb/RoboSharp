@@ -573,10 +573,12 @@ namespace RoboSharp
                     .Append(' ');
             }
 
-            // Quote each FileFilter item. The quotes are trimmed first to ensure that they are applied only once.
-            foreach(string filter in FileFilter)
+            // Ensure all filters are wrapped in quotes
+            foreach(string filter in FileFilter.Where(ExtensionMethods.IsNotEmpty))
             {
-                options.Append('"').Append(filter.Trim('"')).Append('"').Append(' ');
+                options.Append('"')
+                    .Append(filter.Trim().Trim('"').Trim()) // sanitize filter
+                    .Append('"').Append(' ');
             }
             Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
 
@@ -586,12 +588,12 @@ namespace RoboSharp
 
             if (!cleanedCopyFlags.IsNullOrWhiteSpace())
             {
-                options.Append(string.Format(COPY_FLAGS, cleanedCopyFlags));
+                options.AppendFormat(COPY_FLAGS, cleanedCopyFlags);
                 Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
             }
             if (!cleanedDirectoryCopyFlags.IsNullOrWhiteSpace() && (isNotWindows | version >= 5.1260026))
             {
-                options.Append(string.Format(DIRECTORY_COPY_FLAGS, cleanedDirectoryCopyFlags));
+                options.AppendFormat(DIRECTORY_COPY_FLAGS, cleanedDirectoryCopyFlags);
                 Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
             }
             if (CopySubdirectories)
@@ -602,7 +604,7 @@ namespace RoboSharp
             if (CopySubdirectoriesIncludingEmpty)
                 options.Append(COPY_SUBDIRECTORIES_INCLUDING_EMPTY);
             if (Depth > 0)
-                options.Append(string.Format(DEPTH, Depth));
+                options.AppendFormat(DEPTH, Depth);
             if (EnableRestartMode)
                 options.Append(ENABLE_RESTART_MODE);
             if (EnableBackupMode)
@@ -632,9 +634,9 @@ namespace RoboSharp
             if (MoveFilesAndDirectories)
                 options.Append(MOVE_FILES_AND_DIRECTORIES);
             if (!AddAttributes.IsNullOrWhiteSpace())
-                options.Append(string.Format(ADD_ATTRIBUTES, AddAttributes.CleanOptionInput()));
+                options.AppendFormat(ADD_ATTRIBUTES, AddAttributes.CleanOptionInput());
             if (!RemoveAttributes.IsNullOrWhiteSpace())
-                options.Append(string.Format(REMOVE_ATTRIBUTES, RemoveAttributes.CleanOptionInput()));
+                options.AppendFormat(REMOVE_ATTRIBUTES, RemoveAttributes.CleanOptionInput());
             if (CreateDirectoryAndFileTree)
                 options.Append(CREATE_DIRECTORY_AND_FILE_TREE);
             if (FatFiles)
@@ -642,19 +644,19 @@ namespace RoboSharp
             if (TurnLongPathSupportOff)
                 options.Append(TURN_LONG_PATH_SUPPORT_OFF);
             if (MonitorSourceChangesLimit > 0)
-                options.Append(string.Format(MONITOR_SOURCE_CHANGES_LIMIT, MonitorSourceChangesLimit));
+                options.AppendFormat(MONITOR_SOURCE_CHANGES_LIMIT, MonitorSourceChangesLimit);
             if (MonitorSourceTimeLimit > 0)
-                options.Append(string.Format(MONITOR_SOURCE_TIME_LIMIT, MonitorSourceTimeLimit));
+                options.AppendFormat(MONITOR_SOURCE_TIME_LIMIT, MonitorSourceTimeLimit);
             if (!RunHours.IsNullOrWhiteSpace())
-                options.Append(string.Format(RUN_HOURS, RunHours.CleanOptionInput()));
+                options.AppendFormat(RUN_HOURS, RunHours.CleanOptionInput());
             if (CheckPerFile)
                 options.Append(CHECK_PER_FILE);
             if (InterPacketGap > 0)
-                options.Append(string.Format(INTER_PACKET_GAP, InterPacketGap));
+                options.AppendFormat(INTER_PACKET_GAP, InterPacketGap);
             if (CopySymbolicLink)
                 options.Append(COPY_SYMBOLIC_LINK);
             if (MultiThreadedCopiesCount > 0)
-                options.Append(string.Format(MULTITHREADED_COPIES_COUNT, MultiThreadedCopiesCount));
+                options.AppendFormat(MULTITHREADED_COPIES_COUNT, MultiThreadedCopiesCount);
             if (DoNotCopyDirectoryInfo && (isNotWindows | version >= 6.2))
                 options.Append(DO_NOT_COPY_DIRECTORY_INFO);
             if (DoNotUseWindowsCopyOffload && (isNotWindows | version >= 6.2))
