@@ -10,7 +10,7 @@ namespace RoboSharp
     /// <summary>
     /// Factory class used to parse a string that represents a Command Line call to robocommand, and return a command with those parameters.
     /// </summary>
-    public static class RoboCommandParser
+    public static partial class RoboCommandParser
     {
         #region < Public Methods >
 
@@ -431,11 +431,19 @@ namespace RoboSharp
         /// <returns>A StringBuilder instance that represents the trimmed string</returns>
         internal static string TrimRobocopy(string input)
         {
-            //lang=regex 
-            const string rc = @"^(?<rc>\s*((?<sQuote>"".+?[:$].+?robocopy(\.exe)?"")|(?<sNoQuote>([^:*?""<>|\s]+?[:$][^:*?<>|\s]+?)?robocopy(\.exe)?))\s+)";
-            var match = Regex.Match(input, rc, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+            var match = TrimRobocopyRegex(input);
             return match.Success ? input.TrimStart(match.Groups[0].Value) : input;
         }
+
+        //lang=regex 
+        const string _trimRobocopyRegex = @"^(?<rc>\s*((?<sQuote>"".+?[:$].+?robocopy(\.exe)?"")|(?<sNoQuote>([^:*?""<>|\s]+?[:$][^:*?<>|\s]+?)?robocopy(\.exe)?))\s+)";
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(_trimRobocopyRegex, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant, 1000)]
+        private static partial Regex TrimRobocopyRegex();
+        private static Match TrimRobocopyRegex(string input) => TrimRobocopyRegex().Match(input);
+#else
+        private static Match TrimRobocopyRegex(string input) => Regex.Match(input, _trimRobocopyRegex, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(1000));
+#endif
 
         /// <summary>
         /// Parse the string, extracting individual filters out to an IEnumerable string
@@ -517,7 +525,7 @@ namespace RoboSharp
         /// <summary>
         /// Helper object that reports the result from <see cref="Parse(string)"/>
         /// </summary>
-        internal readonly struct ParsedSourceDest
+        internal readonly partial struct ParsedSourceDest
         {
             public readonly string Source;
             public readonly string Destination;
@@ -545,19 +553,34 @@ namespace RoboSharp
             internal const string destinationUndefinedRegex = @"^\s*(?<source>" + allowedPathsRegex + @")$";
             internal const RegexOptions regexOptions = RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace;
 
+#if NET7_0_OR_GREATER
+            [GeneratedRegex(fullRegex, regexOptions, 1000)]
+            private static partial Regex AllowedPathsFullRegex();
+
+            [GeneratedRegex($"^({allowedPathsRegex})", regexOptions, 1000)]
+            private static partial Regex AllowedPathsPartialRegex();
+
+            private static Match AllowedPathsFullRegex(string data) => AllowedPathsFullRegex().Match(data);
+            private static Match AllowedPathsPartialRegex(string data) => AllowedPathsPartialRegex().Match(data);
+#else
+            private static Match AllowedPathsFullRegex(string data) => Regex.Match(data, fullRegex, regexOptions | RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+            private static Match AllowedPathsPartialRegex(string data) => Regex.Match(data, $"^({allowedPathsRegex})", regexOptions | RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+#endif
+
             /// <returns>Strips out any Source/Dest information, then returns a new object</returns>
             public static ParsedSourceDest ParseOptionsOnly(string inputText)
             {
                 string trimmedText = TrimRobocopy(inputText).TrimStart();
                 StringBuilder builder = new StringBuilder(trimmedText);
-                Match fullMatch = Regex.Match(trimmedText, fullRegex, regexOptions);
+                
+                Match fullMatch = AllowedPathsFullRegex(trimmedText);
                 if (fullMatch.Success)
                 {
                     builder.Remove(0, fullMatch.Length).TrimStart();
                 }
                 else
                 {
-                    Match partialMatch = Regex.Match(trimmedText, $"^({allowedPathsRegex})", regexOptions);
+                    Match partialMatch = AllowedPathsPartialRegex(trimmedText);
                     if (partialMatch.Success)
                     {
                         builder.Remove(0, partialMatch.Length).TrimStart();
@@ -578,15 +601,15 @@ namespace RoboSharp
             /// <exception cref="RoboCommandParserException"/>
             public static ParsedSourceDest Parse(string inputText)
             {
-                var match = Regex.Match(inputText, fullRegex, regexOptions);
+                var match = AllowedPathsFullRegex(inputText);
                 RoboCommandParserException ex;
                 if (!match.Success)
                 {
-                    if (Regex.IsMatch(inputText, destinationUndefinedRegex, regexOptions))
+                    if (Regex.IsMatch(inputText, destinationUndefinedRegex, regexOptions, TimeSpan.FromMilliseconds(1000)))
                     {
                         ex = new RoboCommandParserException("Invalid command string - Source was provided without providing Destination");
                     }
-                    else if (Regex.IsMatch(inputText, $"^\\s* .+? \\s* {allowedPathsRegex}", regexOptions))
+                    else if (Regex.IsMatch(inputText, $"^\\s* .+? \\s* {allowedPathsRegex}", regexOptions, TimeSpan.FromMilliseconds(1000)))
                     {
                         ex = new RoboCommandParserException("Invalid data present in command options prior to a source/destination paths");
                     }
