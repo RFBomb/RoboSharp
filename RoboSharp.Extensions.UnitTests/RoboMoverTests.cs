@@ -151,7 +151,7 @@ namespace RoboSharp.Extensions.UnitTests
         public void ExtraFileTest(object[] flags) //CopyActionFlags copyAction, SelectionFlags selectionFlags, LoggingFlags loggingAction
         {
             if (Test_Setup.IsRunningOnAppVeyor()) return;
-            GetMoveCommands((CopyActionFlags)flags[0], (SelectionFlags)flags[0], (LoggingFlags)flags[2], out var rc, out var rm);
+            GetMoveCommands((CopyActionFlags)flags[0], (SelectionFlags)flags[0], (LoggingFlags)flags[2] | LoggingFlags.ReportExtraFiles, out var rc, out var rm);
             bool listOnly = rc.LoggingOptions.ListOnly;
             var results1 = TestPrep.RunTests(rc, rm, !listOnly, CreateFile).Result;
             TestPrep.CompareTestResults(results1[0], results1[1], listOnly);
