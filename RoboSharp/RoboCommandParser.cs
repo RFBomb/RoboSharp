@@ -318,13 +318,27 @@ namespace RoboSharp
         internal const string XF_Pattern = @"(?<filter>\/XF\s*( ((?<Quotes>""(\/\/[a-zA-Z]|[A-Z]:|[^/:\s])?[\w\*$\-\/\\.\s]+"") | (?<NoQuotes>(\/\/[a-zA-Z]|[A-Z]:|[^\/\:\s])?[\w*$\-\/\\.]+)) (\s*(?!\/[a-zA-Z])) )+)";
         //lang=regex
         internal const string XD_Pattern = @"(?<filter>\/XD\s*(( (?<Quotes>""(\/\/[a-zA-Z]|[A-Z]:|[^/:\s])?[\w\*$\-\/\\.\s]+"") | (?<NoQuotes>(\/\/[a-zA-Z]|[A-Z]:|[^\/\:\s])?[\w*$\-\/\\.]+)) (\s*(?!\/[a-zA-Z])) )+)";
+        private const RegexOptions X_PatternOptions = RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.Compiled;
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(XD_Pattern, X_PatternOptions, 1000)]
+        private static partial Regex XD_Regex();
+        private static MatchCollection XD_Regex(string input) => XD_Regex().Matches(input);
         
+        [GeneratedRegex(XF_Pattern, X_PatternOptions, 1000)]
+        private static partial Regex XF_Regex();
+        private static MatchCollection XF_Regex(string input) => XF_Regex().Matches(input);
+#else
+        private static MatchCollection XD_Regex(string input) => Regex.Matches(input, XD_Pattern, X_PatternOptions, TimeSpan.FromMilliseconds(1000));
+        private static MatchCollection XF_Regex(string input) => Regex.Matches(input, XF_Pattern, X_PatternOptions, TimeSpan.FromMilliseconds(1000));
+#endif
+
         internal static IEnumerable<string> ExtractExclusionFiles(StringBuilder command)
         {
             // Get Excluded Files
             Debugger.Instance.DebugMessage($"Parsing Selection Options - Extracting Excluded Files");
             string input = command.ToString();
-            var matchCollection = Regex.Matches(input, XF_Pattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+            var matchCollection = XF_Regex(input);
             if (matchCollection.Count == 0) Debugger.Instance.DebugMessage($"--> No File Exclusions found.");
             foreach (Match c in matchCollection)
             {
@@ -346,7 +360,7 @@ namespace RoboSharp
             // Get Excluded Dirs
             Debugger.Instance.DebugMessage($"Parsing Selection Options - Extracting Excluded Directories");
             string input = command.ToString();
-            var matchCollection = Regex.Matches(input, XD_Pattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+            var matchCollection = XD_Regex(input);
             if (matchCollection.Count == 0) Debugger.Instance.DebugMessage($"--> No Directory Exclusions found.");
             foreach (Match c in matchCollection)
             {
@@ -363,7 +377,7 @@ namespace RoboSharp
             }
         }
 
-        #endregion
+#endregion
 
         private static IRoboCommand ParseLoggingOptions(this IRoboCommand roboCommand, StringBuilder command)
         {
