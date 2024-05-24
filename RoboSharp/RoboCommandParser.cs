@@ -590,11 +590,6 @@ namespace RoboSharp
                     {
                         ex = new RoboCommandParserException("Invalid data present in command options prior to a source/destination paths");
                     }
-                    else if (Regex.IsMatch(inputText, @"^\s* ( ([^:""<>|/]+?\S[^:""<>|]+) | (/[A-Za-z]{1,2}) )", regexOptions))
-                    {
-                        // Checks if unquoted source/destination is empty, and string has file filters or some switch specified
-                        return new ParsedSourceDest(string.Empty, string.Empty, inputText, new StringBuilder(inputText));
-                    }
                     else
                     {
                         ex = new RoboCommandParserException("Source and Destination were unable to be parsed.");
@@ -625,16 +620,6 @@ namespace RoboSharp
                     commandBuilder.Remove(0, rawDest.Length).TrimStart();
                     return new ParsedSourceDest(source, dest, inputText, commandBuilder);
                 }
-                else if (sourceEmpty && destEmpty)
-                {
-                    Debugger.Instance.DebugMessage($"--> Source and Destination Pattern Match Success: Neither specified");
-                    if (match.Success)
-                    {
-                        commandBuilder.Remove(0, rawSource.Length).TrimStart();
-                        commandBuilder.Remove(0, rawDest.Length).TrimStart();
-                    }
-                    return new ParsedSourceDest(string.Empty, string.Empty, inputText, commandBuilder);
-                }
                 else
                 {
                     Debugger.Instance.DebugMessage($"--> Unable to detect a valid Source/Destination pattern match -- Input text : {inputText}");
@@ -642,6 +627,7 @@ namespace RoboSharp
                     Debugger.Instance.DebugMessage($"----> Destination : {dest}");
                     ex = new RoboCommandParserException(message: true switch
                     {
+                        true when sourceEmpty && destEmpty => "Source and Destination are missing!",
                         true when sourceEmpty && destQualified => "Destination is fully qualified, but Source is empty. See exception data.",
                         true when destEmpty && sourceQualified => "Source is fully qualified, but Destination is empty. See exception data.",
                         true when !sourceQualified && !destQualified => "Source and Destination are not fully qualified. See exception data.",
@@ -656,6 +642,6 @@ namespace RoboSharp
                 }
             }
         }
-        #endregion
+#endregion
     }
 }

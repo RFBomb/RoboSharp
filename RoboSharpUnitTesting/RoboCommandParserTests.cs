@@ -29,7 +29,6 @@ namespace RoboSharp.UnitTests
         /// <summary>
         /// Use this one when debugging specific commands that are not deciphering for you!
         /// </summary>
-        [DataRow("\"\" \"\" \"*.txt\" \"*.pdf\"", DisplayName = "No Source or Dest")]
         [DataRow("robocopy.exe \"C:\\MySource\" \"D:\\My Destination\" \"*.txt\" \"*.pdf\"", DisplayName = "quoted filters")]
         [DataRow("\"D:\\Some Folder\\robocopy.exe\" \"C:\\MySource\" \"D:\\My Destination\" *.txt *.pdf", DisplayName = "multiple unquoted filters")]
         [DataRow("c:\\windows\\system32\\robocopy.exe \"C:\\MySource\" \"D:\\My Destination\" *.txt", DisplayName = ".txt Only")]
@@ -55,19 +54,6 @@ namespace RoboSharp.UnitTests
         {
             string result = StringBuilderExtensions.CleanDirectoryPath(input);
             Assert.AreEqual(output, result, string.Format("\n\n    Input : {0}\n   Output : {1}\n Expected : {2}", input, result, output));
-        }
-
-        [DataRow(@"robocopy """" """" *.docx /E", @" ""*.docx"" /E" + CmdEndText, DisplayName = "No Source or Dest - 1")]
-        [TestMethod]
-        public void Test_CustomParameters(string command, string expected)
-        {
-            Debugger.Instance.DebugMessageEvent += DebuggerWriteLine;
-            IRoboCommand cmd = RoboCommandParser.Parse(command);
-            Debugger.Instance.DebugMessageEvent -= DebuggerWriteLine;
-            Console.WriteLine($"\n\n   Input : {command}");
-            Console.WriteLine($"  Output : {cmd.ToString().Trim()}");
-            Console.WriteLine($"Expected : {expected.Trim()}");
-            Assert.AreEqual(expected.Trim(), cmd.ToString().Trim(), true);
         }
 
         [DataRow(@"*.* *.pdf", @"", 2, DisplayName = "Test 1")]
@@ -138,7 +124,7 @@ namespace RoboSharp.UnitTests
         [TestMethod]
         public void Test_ExcludedFilesRaw(string input, string expected)
         {
-            IRoboCommand cmdResult = RoboCommandParser.Parse(input);
+            IRoboCommand cmdResult = RoboCommandParser.ParseOptions(input);
 
             expected += CmdEndText;
 
@@ -436,8 +422,8 @@ namespace RoboSharp.UnitTests
         [DataRow("8:bad_source", "D:\\Dest", DisplayName = "Unqualified Source")]
         [DataRow("D:\\Source", "", DisplayName = "Empty Destination")]
         [DataRow("D:\\Source", "/:bad_dest", DisplayName = "Unqualified Destination")]
-        [DataRow("", "", false, true, DisplayName = "No Values - Quotes")]
-        [DataRow("", "", false, false, DisplayName = "No Values- No Quotes")]
+        [DataRow("", "", true, true, DisplayName = "No Values - Quotes")]
+        [DataRow("", "", true, false, DisplayName = "No Values- No Quotes")]
         [DataRow("//Server\\myServer$\\1", "//Server\\myServer$\\2", false, false, DisplayName = "Server Test - No Quotes")]
         [DataRow("//Server\\myServer$\\1", "//Server\\myServer$\\2", false, true, DisplayName = "Server Test - Quotes")]
         [TestMethod]
