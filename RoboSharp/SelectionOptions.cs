@@ -182,7 +182,7 @@ namespace RoboSharp
         /// <remarks>
         /// This property is now backed by the ExcludedFiles List{String} property. <br/>
         /// Get -> Ensures all strings in { <see cref="ExcludedFiles"/> } are wrapped in quotes if needed, and concats the items into a single string. <br/>
-        /// Set -- Clears ExcludedFiles and splits this list using a regex to populate the list.
+        /// Set -> Clears ExcludedFiles and splits this list using a regex to populate the list.
         /// </remarks>
         [Obsolete("This property is now backed by the ExcludedFiles List<String> property. \n Both Get/Set accessors still work similar to previous:\n" +
             "- 'Get' sanitizies then Joins all strings in the list into a single output string that is passed into RoboCopy.\n" +
@@ -192,12 +192,12 @@ namespace RoboSharp
         {
             get
             {
-                string RetString = "";
+                StringBuilder RetString = new StringBuilder();
                 foreach (string s in ExcludedFiles)
                 {
-                    RetString += s.WrapPath() + " ";
+                    RetString.AppendWrappedPath(s).Append(' ');
                 }
-                return RetString.Trim();
+                return RetString.Trim().ToString();
             }
             set
             {
@@ -211,6 +211,9 @@ namespace RoboSharp
         /// Allows you to supply a set of files to copy or use wildcard characters (* or ?). <br/>
         /// JobOptions file saves these into the /XF (Exclude Files) section
         /// </summary>
+        /// <remarks>
+        /// Example: *.txt will exclude any .txt files 
+        /// </remarks>
         public List<string> ExcludedFiles { get; } = new List<string>();
 
         /// <summary>
@@ -231,12 +234,12 @@ namespace RoboSharp
         {
             get
             {
-                string RetString = "";
+                StringBuilder RetString = new StringBuilder();
                 foreach (string s in ExcludedDirectories)
                 {
-                    RetString += s.WrapPath() + " ";
+                    RetString.AppendWrappedPath(s).Append(' ');
                 }
-                return RetString.Trim();
+                return RetString.Trim().ToString();
             }
             set
             {
@@ -249,6 +252,11 @@ namespace RoboSharp
         /// Allows you to supply a set of files to copy or use wildcard characters (* or ?). <br/>
         /// JobOptions file saves these into the /XD (Exclude Directories) section
         /// </summary>
+        /// <remarks>
+        /// Examples: 
+        /// <br/> - 'Archive' -> Exclude a folder named 'Archive' from the root directory.  Source/Archive (excluded)   --- Source/SubFolder/Archive (not excluded)
+        /// <br/> - 'C:\My\Archive' -> Exclude the fully qualified directory path.
+        /// </remarks>
         public List<string> ExcludedDirectories { get; } = new List<string>();
 
         /// <summary>
@@ -482,6 +490,24 @@ namespace RoboSharp
             if (attributes.Contains('T')) attr = attr.HasValue ? attr |= FileAttributes.Temporary : FileAttributes.Temporary;
             if (attributes.Contains('O')) attr = attr.HasValue ? attr |= FileAttributes.Offline : FileAttributes.Offline;
             return attr;
+        }
+
+        /// <summary>
+        /// Adds the supplied <paramref name="fileExclusions"/> to the <see cref="ExcludedFiles"/> collection
+        /// </summary>
+        /// <param name="fileExclusions"><inheritdoc cref="ExcludedFiles" path="/remarks"/></param>
+        public void AddFileExclusion(params string[] fileExclusions)
+        {
+            this.ExcludedFiles.AddRange(fileExclusions);
+        }
+
+        /// <summary>
+        /// Adds the supplied <paramref name="directoryExclusions"/> to the <see cref="ExcludedDirectories"/> collection.
+        /// </summary>
+        /// <param name="directoryExclusions"><inheritdoc cref="ExcludedDirectories" path="/remarks"/></param>
+        public void AddDirectoryExclusion(params string[] directoryExclusions)
+        {
+            this.ExcludedDirectories.AddRange(directoryExclusions);
         }
 
         /// <summary>

@@ -10,11 +10,12 @@ namespace RoboSharp
     /// <summary>
     /// An exception thrown by the <see cref="RoboCommandParser"/>
     /// </summary>
-    public class RoboCommandParserException : Exception
+    public class RoboCommandParserException : ArgumentException
     {
         private RoboCommandParserException() :base() { }
 
         internal RoboCommandParserException(string message) : base(message) { }
+        internal RoboCommandParserException(string message, string paramName) : base(message, paramName) { }
 
         /// <returns>Contains parameter data about the function that resulted in the exception.</returns>
         /// <inheritdoc cref="Exception.Data"/>

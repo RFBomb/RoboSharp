@@ -25,8 +25,8 @@ namespace RoboSharp
         /// </summary>
         public CopyOptions() 
         {
-            this.Source = string.Empty;
-            this.Destination = string.Empty;
+            this._source = string.Empty;
+            this._destination = string.Empty;
             this.runHours = string.Empty;
         }
 
@@ -72,7 +72,7 @@ namespace RoboSharp
             EnableRestartMode = copyOptions.EnableRestartMode;
             EnableRestartModeWithBackupFallback = copyOptions.EnableRestartModeWithBackupFallback;
             FatFiles = copyOptions.FatFiles;
-            FileFilter = copyOptions.FileFilter;
+            FileFilter = copyOptions._fileFilter;
             FixFileSecurityOnAllFiles = copyOptions.FixFileSecurityOnAllFiles;
             FixFileTimesOnAllFiles = copyOptions.FixFileTimesOnAllFiles;
             InterPacketGap = copyOptions.InterPacketGap;
@@ -141,8 +141,8 @@ namespace RoboSharp
         /// The Default File Filter used that will allow copying of all files
         /// </summary>
         public const string DefaultFileFilter = "*.*" ;
-        
-        private IEnumerable<string> fileFilter = new[] { DefaultFileFilter };
+
+        private IEnumerable<string> _fileFilter;
         private string copyFlags = "DAT";
         private string directoryCopyFlags = !VersionManager.IsPlatformWindows ? "DA" : VersionManager.Version >= 6.2 ? "DA" : "T";
 
@@ -170,14 +170,8 @@ namespace RoboSharp
         /// <remarks>JobOptions file saves these into the /IF (Include Files) section</remarks>
         public IEnumerable<string> FileFilter
         {
-            get
-            {
-                return fileFilter;
-            }
-            set
-            {
-                fileFilter = value;
-            }
+            get => _fileFilter ?? DefaultFileFilterEnumerable();
+            set => _fileFilter = value;
         }
 
         /// <summary>
@@ -556,21 +550,6 @@ namespace RoboSharp
         #region < Parse (INTERNAL) >
 
         /// <summary>
-        /// Used by the Parse method to sanitize path for the command options.<br/>
-        /// Evaluate the path. If needed, wrap it in quotes.  <br/>
-        /// If the path ends in a DirectorySeperatorChar, santize it to work as expected. <br/>
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns>Each return string includes a space at the end of the string to seperate it from the next option variable.</returns>
-        private static string WrapPath(string path)
-        {
-            if (!path.Contains(" ")) return $"{path} "; //No spaces, just return the path
-            //Below this line, the path contains a space, so it must be wrapped in quotes.
-            if (path.EndsWithDirectorySeperator()) return $"\"{path}.\" "; // Ends with a directory seperator - Requires a '.' to denote using that directory. ex: "F:\."
-            return $"\"{path}\" ";
-        }
-
-        /// <summary>
         /// Parse the class properties and generate the command arguments
         /// </summary>
         /// <param name="optionsOnly">When <see langword="true"/> only returns the options tags, similar to how robocopy would display them. (omits the source/destination)</param>
@@ -584,15 +563,19 @@ namespace RoboSharp
             if (!optionsOnly)
             {
                 // Set Source and Destination
-                options.Append(WrapPath(Source));
-                options.Append(WrapPath(Destination));
+                options.AppendWrappedPath(Source)
+                    .Append(' ')
+                    .AppendWrappedPath(Destination)
+                    .Append(' ');
             }
-            
-            // Set FileFilter
-            // Quote each FileFilter item. The quotes are trimmed first to ensure that they are applied only once.
-            var fileFilterQuotedItems = FileFilter.Select(word => "\"" + word.Trim('"') + "\"");
-            string fileFilter = String.Join(" ", fileFilterQuotedItems);
-            options.Append($"{fileFilter} ");
+
+            // Ensure all filters are wrapped in quotes
+            foreach(string filter in FileFilter.Where(ExtensionMethods.IsNotEmpty))
+            {
+                options.Append('"')
+                    .Append(filter.Trim().Trim('"').Trim()) // sanitize filter
+                    .Append('"').Append(' ');
+            }
             Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
 
             #region Set Options
@@ -601,12 +584,12 @@ namespace RoboSharp
 
             if (!cleanedCopyFlags.IsNullOrWhiteSpace())
             {
-                options.Append(string.Format(COPY_FLAGS, cleanedCopyFlags));
+                options.AppendFormat(COPY_FLAGS, cleanedCopyFlags);
                 Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
             }
             if (!cleanedDirectoryCopyFlags.IsNullOrWhiteSpace() && (isNotWindows | version >= 5.1260026))
             {
-                options.Append(string.Format(DIRECTORY_COPY_FLAGS, cleanedDirectoryCopyFlags));
+                options.AppendFormat(DIRECTORY_COPY_FLAGS, cleanedDirectoryCopyFlags);
                 Debugger.Instance.DebugMessage(string.Format("Parsing CopyOptions progress ({0}).", options.ToString()));
             }
             if (CopySubdirectories)
@@ -617,7 +600,7 @@ namespace RoboSharp
             if (CopySubdirectoriesIncludingEmpty)
                 options.Append(COPY_SUBDIRECTORIES_INCLUDING_EMPTY);
             if (Depth > 0)
-                options.Append(string.Format(DEPTH, Depth));
+                options.AppendFormat(DEPTH, Depth);
             if (EnableRestartMode)
                 options.Append(ENABLE_RESTART_MODE);
             if (EnableBackupMode)
@@ -647,9 +630,9 @@ namespace RoboSharp
             if (MoveFilesAndDirectories)
                 options.Append(MOVE_FILES_AND_DIRECTORIES);
             if (!AddAttributes.IsNullOrWhiteSpace())
-                options.Append(string.Format(ADD_ATTRIBUTES, AddAttributes.CleanOptionInput()));
+                options.AppendFormat(ADD_ATTRIBUTES, AddAttributes.CleanOptionInput());
             if (!RemoveAttributes.IsNullOrWhiteSpace())
-                options.Append(string.Format(REMOVE_ATTRIBUTES, RemoveAttributes.CleanOptionInput()));
+                options.AppendFormat(REMOVE_ATTRIBUTES, RemoveAttributes.CleanOptionInput());
             if (CreateDirectoryAndFileTree)
                 options.Append(CREATE_DIRECTORY_AND_FILE_TREE);
             if (FatFiles)
@@ -657,19 +640,19 @@ namespace RoboSharp
             if (TurnLongPathSupportOff)
                 options.Append(TURN_LONG_PATH_SUPPORT_OFF);
             if (MonitorSourceChangesLimit > 0)
-                options.Append(string.Format(MONITOR_SOURCE_CHANGES_LIMIT, MonitorSourceChangesLimit));
+                options.AppendFormat(MONITOR_SOURCE_CHANGES_LIMIT, MonitorSourceChangesLimit);
             if (MonitorSourceTimeLimit > 0)
-                options.Append(string.Format(MONITOR_SOURCE_TIME_LIMIT, MonitorSourceTimeLimit));
+                options.AppendFormat(MONITOR_SOURCE_TIME_LIMIT, MonitorSourceTimeLimit);
             if (!RunHours.IsNullOrWhiteSpace())
-                options.Append(string.Format(RUN_HOURS, RunHours.CleanOptionInput()));
+                options.AppendFormat(RUN_HOURS, RunHours.CleanOptionInput());
             if (CheckPerFile)
                 options.Append(CHECK_PER_FILE);
             if (InterPacketGap > 0)
-                options.Append(string.Format(INTER_PACKET_GAP, InterPacketGap));
+                options.AppendFormat(INTER_PACKET_GAP, InterPacketGap);
             if (CopySymbolicLink)
                 options.Append(COPY_SYMBOLIC_LINK);
             if (MultiThreadedCopiesCount > 0)
-                options.Append(string.Format(MULTITHREADED_COPIES_COUNT, MultiThreadedCopiesCount));
+                options.AppendFormat(MULTITHREADED_COPIES_COUNT, MultiThreadedCopiesCount);
             if (DoNotCopyDirectoryInfo && (isNotWindows | version >= 6.2))
                 options.Append(DO_NOT_COPY_DIRECTORY_INFO);
             if (DoNotUseWindowsCopyOffload && (isNotWindows | version >= 6.2))
@@ -743,23 +726,25 @@ namespace RoboSharp
 
         /// <summary>
         /// Add file filters to the <see cref="FileFilter"/> property.
-        /// <para/> Note: If the FileFilter contains only <see cref="DefaultFileFilter"/>, it will be replaced with the new collection.
-        /// <br/>Otherwise, the <paramref name="filters"/> will be added to the collection.
+        /// <para/>If filters have not been specified, this collection is set to the property value.
+        /// <br/>Otherwise, updates the property with a new collection, where the supplied <paramref name="filters"/> concats to the existing collection
         /// </summary>
         /// <param name="filters"><inheritdoc cref="FileFilter" path="/summary"/></param>
-        public void AddFileFilter(params string[] filters)
+        public void AddFileFilter(params string[] filters) => AddFileFilter(filters.AsEnumerable());
+
+        /// <inheritdoc cref="AddFileFilter(string[])"/>
+        public void AddFileFilter(IEnumerable<string> filters)
         {
-            if (filters.Length == 0) return;
-            if (FileFilter is null | !FileFilter.Any())
+            if (_fileFilter is null)
                 FileFilter = filters;
             else
-            {
-                var cur = FileFilter.ToArray();
-                if (cur.Length == 1 && cur[0] == DefaultFileFilter)
-                    FileFilter = filters;
-                else
-                    FileFilter = cur.Concat(filters);
-            }
+                FileFilter = _fileFilter.Concat(filters);
+        }
+
+        /// <returns>An empty filter collection - providing no arguments is the same as *.* </returns>
+        private static IEnumerable<string> DefaultFileFilterEnumerable()
+        {
+            yield break;
         }
 
         #region < Flags >
@@ -869,9 +854,8 @@ namespace RoboSharp
             RemoveAttributes = RemoveAttributes.CombineCharArr(copyOptions.RemoveAttributes);
 
             //IEnumerable
-            var list = new List<String>(FileFilter);
-            list.AddRange(copyOptions.FileFilter);
-            FileFilter = list;
+            if (copyOptions._fileFilter != null)
+                AddFileFilter(copyOptions._fileFilter);
 
             //Bool
             CheckPerFile |= copyOptions.CheckPerFile;
