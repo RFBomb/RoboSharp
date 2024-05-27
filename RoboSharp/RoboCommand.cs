@@ -18,7 +18,7 @@ namespace RoboSharp
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/RoboCommand"/>
     /// </remarks>
-    public class RoboCommand : IDisposable, IRoboCommand, ICloneable
+    public partial class RoboCommand : IDisposable, IRoboCommand, ICloneable
     {
         /// <summary>
         /// The base <see cref="RoboCommandFactory"/> object provided by the RoboSharp library.
@@ -716,6 +716,24 @@ namespace RoboSharp
             }
         }
 
+        //lang=regex
+        private const string _outputProgressDataPattern = "^[0-9]+[.]?[0-9]*%";
+        //lang=regex -- Regex to parse the string for FileCount, Path, and Type (Description)
+        private const string _outputDirectoryDataPattern = "^(?<Type>\\*?[a-zA-Z]{0,10}\\s?[a-zA-Z]{0,3})\\s*(?<FileCount>[-]{0,1}[0-9]{1,100})\\t(?<Path>.+)";
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(_outputProgressDataPattern, RegexOptions.CultureInvariant, 1000)]
+        internal partial Regex Process_OutputProgressDataRegex();
+
+        [GeneratedRegex(_outputDirectoryDataPattern, RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 1000)]
+        internal partial Regex Process_OutputDirectoryDataRegex();
+#else
+        private static Regex _OutputDataRegex_Progress;
+        private static Regex _OutputDataRegex_Directory;
+        private static Regex Process_OutputProgressDataRegex() => _OutputDataRegex_Progress ??= new Regex(_outputProgressDataPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(1000));
+        private static Regex Process_OutputDirectoryDataRegex() => _OutputDataRegex_Directory ??= new Regex(_outputDirectoryDataPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(1000));
+#endif
+
         /// <summary> React to Process.StandardOutput </summary>
         void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
@@ -728,7 +746,7 @@ namespace RoboSharp
             if (LastDataReceived == data) return;   // Sometimes RoboCopy reports same item multiple times - Typically for Progress indicators
             LastDataReceived = data;
 
-            if (Regex.IsMatch(data, "^[0-9]+[.]?[0-9]*%", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnorePatternWhitespace))
+            if (Process_OutputProgressDataRegex().IsMatch(data))
             {
                 var currentFile = ProgressEstimator.CurrentFile;
                 var currentDir = ProgressEstimator?.CurrentDir;
@@ -754,18 +772,16 @@ namespace RoboSharp
 
                 if (splitData.Length == 2) // Directory
                 {
-                    // Regex to parse the string for FileCount, Path, and Type (Description)
-                    Regex DirRegex = new Regex("^(?<Type>\\*?[a-zA-Z]{0,10}\\s?[a-zA-Z]{0,3})\\s*(?<FileCount>[-]{0,1}[0-9]{1,100})\\t(?<Path>.+)", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-
                     var file = new ProcessedFileInfo
                     {
                         FileClassType = FileClassType.NewDir
                     };
 
-                    if (DirRegex.IsMatch(data))
+                    Match dirMatch = Process_OutputDirectoryDataRegex().Match(data);
+                    if (dirMatch.Success)
                     {
                         //New Method - Parsed using Regex
-                        GroupCollection MatchData = DirRegex.Match(data).Groups;
+                        GroupCollection MatchData = dirMatch.Groups;
                         file.FileClass = MatchData["Type"].Value.Trim();
                         if (file.FileClass == "") file.FileClass = configuration.LogParsing_ExistingDir;
                         file.Size = long.TryParse(MatchData["FileCount"].Value, out long size) ? size : 0;
@@ -824,7 +840,7 @@ namespace RoboSharp
             }
         }
 
-        #endregion
+#endregion
 
         #region < Other Public Methods >
 

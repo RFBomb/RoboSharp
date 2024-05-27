@@ -127,17 +127,38 @@ namespace RoboSharp.UnitTests
             Assert.AreEqual(endTime, options.GetRunHours_EndTime());
         }
 
-        [DataRow("0010-1310", true)]
-        [DataRow("0010-10", false)]
-        [DataRow("10-1010", false)]
-        [DataRow("q000-1010", false)]
-        [DataRow("1010-1l10", false)]
-        [DataRow("1010", false)]
         [TestMethod]
-        public void Test_IsRunHoursStringValid(string input, bool expected)
+        public void Test_IsRunHoursStringValid()
         {
-            Assert.AreEqual(expected, CopyOptions.IsRunHoursStringValid(input));
-            Assert.AreEqual(expected, new CopyOptions().CheckRunHoursString(input));
+            // Test all true values
+            int h = 0, m = -1;
+
+            while (nextValidValue(out string input))
+                Assert.IsTrue(CopyOptions.IsRunHoursStringValid(input), $"\nExpected TRUE. \nString that failed : {input}");
+            Assert.IsTrue(h == 24 && m == 00);
+            Assert.IsTrue(CopyOptions.IsRunHoursStringValid(""));
+
+            //test some invalid values
+            Assert.IsFalse(CopyOptions.IsRunHoursStringValid("test"));
+            Assert.IsFalse(CopyOptions.IsRunHoursStringValid("2400-2400"));
+            Assert.IsFalse(CopyOptions.IsRunHoursStringValid("1370-2000"));
+            Assert.IsFalse(CopyOptions.IsRunHoursStringValid("0060-0000"));
+            Assert.IsFalse(CopyOptions.IsRunHoursStringValid("0000-0080"));
+
+            bool nextValidValue(out string value)
+            {
+                if (m >= 59)
+                {
+                    h++;
+                    m = 0;
+                }
+                else
+                {
+                    m++;
+                }
+                value = string.Format("{0:d2}{1:d2}-{0:d2}{1:d2}", h, m);
+                return h < 24;
+            }
         }
 
         [TestMethod]

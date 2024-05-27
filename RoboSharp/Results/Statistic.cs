@@ -20,7 +20,7 @@ namespace RoboSharp.Results
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/Statistic"/>
     /// </remarks>
-    public class Statistic : IStatistic
+    public partial class Statistic : IStatistic
     {
         internal static IStatistic Default_Bytes = new Statistic(type: StatType.Bytes);
         internal static IStatistic Default_Files = new Statistic(type: StatType.Files);
@@ -339,6 +339,25 @@ namespace RoboSharp.Results
 
         #region < Parsing Methods >
 
+        //lang=regex
+        private const string _tokenPattern = @"^.*:\s+(?<Total>[\d\.]+(\s\w)?)\s+(?<Copied>[\d\.]+(\s\w)?)\s+(?<Skipped>[\d\.]+(\s\w)?)\s+(?<Mismatch>[\d\.]+(\s\w)?)\s+(?<Failed>[\d\.]+(\s\w)?)\s+(?<Extras>[\d\.]+(\s\w)?)";
+        //lang=regex
+        private const string _longConversionPattern = @"(?<Whole>[\d\.,]+)(\.(?<Fraction>\d+))\s(?<Unit>\w)";
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(_tokenPattern, RegexOptions.ExplicitCapture, 1000)]
+        private static partial Regex TokenParsingRegex();
+        [GeneratedRegex(_longConversionPattern, RegexOptions.ExplicitCapture, 1000)]
+        private static partial Regex LongConversionRegex();
+
+        private static Match TokenParsingRegex(string data) => TokenParsingRegex().Match(data);
+        private static Match LongConversionRegex(string data) => LongConversionRegex().Match(data);
+#else
+        private static Match TokenParsingRegex(string data) => Regex.Match(data, _tokenPattern, RegexOptions.ExplicitCapture | RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+        private static Match LongConversionRegex(string data) => Regex.Match(data, _longConversionPattern, RegexOptions.ExplicitCapture | RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+#endif
+
+
         /// <summary>
         /// Parse a string and for the tokens reported by RoboCopy
         /// </summary>
@@ -350,38 +369,19 @@ namespace RoboSharp.Results
         {
             var res = estimatedStat ?? new Statistic(type);
 
-            var tokenNames = new[] { nameof(Total), nameof(Copied), nameof(Skipped), nameof(Mismatch), nameof(Failed), nameof(Extras) };
-            var patternBuilder = new StringBuilder(@"^.*:");
+            var match = TokenParsingRegex(line);
 
-            foreach (var tokenName in tokenNames)
-            {
-                var tokenPattern = GetTokenPattern(tokenName);
-                patternBuilder.Append(@"\s+").Append(tokenPattern);
-            }
-
-            var pattern = patternBuilder.ToString();
-            var match = Regex.Match(line, pattern);
             if (!match.Success)
                 return res;
 
-            var props = res.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-            foreach (var tokenName in tokenNames)
-            {
-                var prop = props.FirstOrDefault(x => x.Name == tokenName);
-                if (prop == null)
-                    continue;
-
-                var tokenString = match.Groups[tokenName].Value;
-                var tokenValue = ParseTokenString(tokenString);
-                prop.SetValue(res, tokenValue, null);
-            }
-
+            res.Total = ParseTokenString(match.Groups[nameof(Total)].Value);
+            res.Copied = ParseTokenString(match.Groups[nameof(Copied)].Value);
+            res.Skipped = ParseTokenString(match.Groups[nameof(Skipped)].Value);
+            res.Mismatch = ParseTokenString(match.Groups[nameof(Mismatch)].Value);
+            res.Failed = ParseTokenString(match.Groups[nameof(Failed)].Value);
+            res.Extras= ParseTokenString(match.Groups[nameof(Extras)].Value);
+            
             return res;
-        }
-
-        private static string GetTokenPattern(string tokenName)
-        {
-            return $@"(?<{tokenName}>[\d\.]+(\s\w)?)";
         }
 
         private static long ParseTokenString(string tokenString)
@@ -390,17 +390,19 @@ namespace RoboSharp.Results
                 return 0;
 
             tokenString = tokenString.Trim();
-            if (Regex.IsMatch(tokenString, @"^\d+$", RegexOptions.Compiled))
+            if (Regex.IsMatch(tokenString, @"^\d+$"))
                 return long.Parse(tokenString);
 
-            var match = Regex.Match(tokenString, @"(?<Mains>[\d\.,]+)(\.(?<Fraction>\d+))\s(?<Unit>\w)", RegexOptions.Compiled);
+            var match = LongConversionRegex(tokenString);
             if (match.Success)
             {
-                var mains = match.Groups["Mains"].Value.Replace(".", "").Replace(",", "");
-                var fraction = match.Groups["Fraction"].Value;
+                var builder = new StringBuilder(match.Groups["Whole"].Value).RemoveChars(',', '.', ' ') // whole number
+                    .Append('.') // decimal
+                    .Append(match.Groups["Fraction"].Value); // decimal values
+
                 var unit = match.Groups["Unit"].Value.ToLower();
 
-                var number = double.Parse($"{mains}.{fraction}", NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+                var number = double.Parse(builder.ToString(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
                 switch (unit)
                 {
                     case "k":
