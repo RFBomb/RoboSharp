@@ -119,6 +119,12 @@ namespace RoboSharp
         protected Regex errorTokenRegex;
         private bool ErrRegexInitRequired = false;
 
+        //lang=regex
+        internal const string ErrorTokenPatternPrefix = "(?<Date>.*?)\\s+";
+        //lang=regex
+        internal const string ErrorTokenPatternSuffix = "\\s+(?<ErrCode>[0-9]+)\\s+(?<SignedErrCode>\\([0-9Xx]+\\))\\s+(?<Descrip>[\\w\\s]+(?!:))(?<Path>.*)";
+        internal const RegexOptions ErrorTokenOptions = RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture;
+
         /// <summary>
         /// Generate a new ErrorTokenRegex object from by insterting the <see cref="ErrorToken"/> into a standardized pattern.
         /// </summary>
@@ -126,9 +132,7 @@ namespace RoboSharp
         /// <returns></returns>
         internal static Regex ErrorTokenRegexGenerator(string errorToken)
         {
-            Regex BaseErrTokenRegex = new Regex("(?<Date>.*?)\\s+IDENTIFIER\\s+(?<ErrCode>[0-9]+)\\s+(?<SignedErrCode>\\([0-9Xx]+\\))\\s+(?<Descrip>[\\w\\s]+(?!:))(?<Path>.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture);
-            string pattern = BaseErrTokenRegex.ToString().Replace("IDENTIFIER", errorToken);
-            return new Regex(pattern, BaseErrTokenRegex.Options);
+            return new Regex($"{ErrorTokenPatternPrefix}{errorToken}{ErrorTokenPatternSuffix}", ErrorTokenOptions, TimeSpan.FromMilliseconds(1000));
         }
 
         #region < File Tokens >
@@ -388,9 +392,9 @@ namespace RoboSharp
 
             // check for default with language Tag xx-YY (e.g. en-US)
             var currentLanguageTag = System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag;
-            if (defaultConfigurations.ContainsKey(currentLanguageTag))
+            if (defaultConfigurations.TryGetValue(currentLanguageTag, out RoboSharpConfiguration value))
             {
-                defaultConfig = defaultConfigurations[currentLanguageTag];
+                defaultConfig = value;
             }
             else
             {
@@ -399,9 +403,9 @@ namespace RoboSharp
                 if (match.Success)
                 {
                     var currentMainLanguageTag = match.Value;
-                    if (defaultConfigurations.ContainsKey(currentMainLanguageTag))
+                    if (defaultConfigurations.TryGetValue(currentMainLanguageTag, out value))
                     {
-                        defaultConfig = defaultConfigurations[currentMainLanguageTag];
+                        defaultConfig = value;
                     }
                 }
             }

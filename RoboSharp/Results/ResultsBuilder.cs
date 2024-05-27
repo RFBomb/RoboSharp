@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,7 +13,7 @@ namespace RoboSharp.Results
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/ResultsBuilder"/>
     /// </remarks>
-    internal class ResultsBuilder
+    internal partial class ResultsBuilder
     {
         internal ResultsBuilder(RoboCommand roboCommand, ProgressEstimator estimator) {
             RoboCommand = roboCommand;
@@ -66,6 +68,15 @@ namespace RoboSharp.Results
 
         #endregion
 
+        // Regex used inside of AddOutput(string)
+#if NET7_0_OR_GREATER
+        [GeneratedRegex("^\\s*[\\d\\.,]+%\\s*$", RegexOptions.None, 1000)]
+        private static partial Regex ProgressIndicatorRegex();
+#else
+        private static Regex ProgressIndicatorRegex() => _progressIndicatorRegex ??= new Regex(@"^\s*[\d\.,]+%\s*$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+        private static Regex _progressIndicatorRegex;
+#endif
+
         /// <summary>
         /// Add a LogLine reported by RoboCopy to the LogLines list.
         /// </summary>
@@ -82,7 +93,7 @@ namespace RoboSharp.Results
                 _lastLine = output;
                 return;
             }
-            else if (!_isLoggingHeader && Regex.IsMatch(output, @"^\s*[\d\.,]+%\s*$", RegexOptions.Compiled)) //Ignore Progress Indicators
+            else if (!_isLoggingHeader && ProgressIndicatorRegex().IsMatch(output)) //Ignore Progress Indicators
                 return;
 
             if (_isLoggingHeader || _enableFileLogging) _outputLines.Add(output); // Bypass logging the file names if EnableLogging is set to false
@@ -148,7 +159,7 @@ namespace RoboSharp.Results
             while (_lastLines.TryDequeue(out string line))
             {
                 if (!_enableFileLogging) _outputLines.Add(line); // Add the summary lines to the output lines if they were not already recorded
-                if (line.Contains(":") && !line.Contains("\\"))
+                if (line.Contains(':') && !line.Contains('\\'))
                     res.Add(line);
             }
             return res;

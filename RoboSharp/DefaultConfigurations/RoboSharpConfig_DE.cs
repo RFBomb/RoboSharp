@@ -6,13 +6,14 @@ using System.Text.RegularExpressions;
 
 namespace RoboSharp.DefaultConfigurations
 {
-    internal class RoboSharpConfig_DE : RoboSharpConfiguration
+    internal partial class RoboSharpConfig_DE : RoboSharpConfiguration
     {
+        private const string _ErrorToken = "FEHLER";
+
         public RoboSharpConfig_DE() : base()
         {
-            errorToken = "FEHLER";
-            errorTokenRegex = RoboSharpConfiguration.ErrorTokenRegexGenerator(errorToken);
-            //errorTokenRegex = new Regex($" FEHLER " + @"(\d{1,3}) \(0x\d{8}\) ", RegexOptions.Compiled);
+            errorToken = _ErrorToken;
+            errorTokenRegex = GetErrorTokenRegex();
 
             // < File Tokens >
 
@@ -33,5 +34,12 @@ namespace RoboSharp.DefaultConfigurations
             //LogParsing_DirectoryExclusion = "named";
 
         }
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(ErrorTokenPatternPrefix + _ErrorToken + ErrorTokenPatternSuffix, ErrorTokenOptions, 1000)]
+        internal static partial Regex GetErrorTokenRegex();
+#else
+        private static Regex GetErrorTokenRegex() => RoboSharpConfiguration.ErrorTokenRegexGenerator(_ErrorToken);
+#endif
     }
 }

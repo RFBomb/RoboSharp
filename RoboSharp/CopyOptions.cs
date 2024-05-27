@@ -16,7 +16,7 @@ namespace RoboSharp
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/CopyOptions"/>
     /// </remarks>
-    public class CopyOptions : ICloneable
+    public partial class CopyOptions : ICloneable
     {
         #region Constructors
 
@@ -679,10 +679,15 @@ namespace RoboSharp
 
         #region < RunHours (Public) >
 
-        private static readonly Regex RunHours_OverallRegex = new Regex("^(?<StartTime>[0-2][0-9][0-5][0-9])-(?<EndTime>[0-2][0-9][0-5][0-9])$", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-        private static readonly Regex RunHours_Check1 = new Regex("^[0-1][0-9][0-5][0-9]$", RegexOptions.Compiled);  // Checks 0000 - 1959
-        private static readonly Regex RunHours_Check2 = new Regex("^[2][0-3][0-5][0-9]$", RegexOptions.Compiled);    // Checks 2000 - 2359
-        private GroupCollection RunHoursGroups => RunHours_OverallRegex.Match(RunHours).Groups;
+        //lang=regex    (0000 - 1959) | (2000 - 2359)
+        private const string _runHoursPattern = "^(?<StartTime>([0-1][0-9][0-5][0-9])|([2][0-3][0-5][0-9]))-(?<EndTime>([0-1][0-9][0-5][0-9])|([2][0-3][0-5][0-9]))$";
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(_runHoursPattern, RegexOptions.Compiled | RegexOptions.ExplicitCapture, 1000)]
+        internal static partial Regex RunHoursRegex();
+#else
+        private static Regex _RunHoursRegex;
+        private static Regex RunHoursRegex() => _RunHoursRegex ??= new Regex(_runHoursPattern,  RegexOptions.Compiled | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(1000));
+#endif
 
         /// <summary>
         /// Get the StartTime portion of <see cref="RunHours"/>
@@ -691,7 +696,7 @@ namespace RoboSharp
         public string GetRunHours_StartTime()
         {
             if (RunHours.IsNullOrWhiteSpace()) return string.Empty;
-            return RunHoursGroups["StartTime"]?.Value ?? String.Empty;
+            return RunHoursRegex().Match(RunHours).Groups["StartTime"]?.Value ?? String.Empty;
         }
 
         /// <summary>
@@ -701,7 +706,7 @@ namespace RoboSharp
         public string GetRunHours_EndTime()
         {
             if (RunHours.IsNullOrWhiteSpace()) return string.Empty;
-            return RunHoursGroups["EndTime"]?.Value ?? String.Empty;
+            return RunHoursRegex().Match(RunHours).Groups["EndTime"]?.Value ?? String.Empty;
         }
 
         /// <summary>
@@ -712,17 +717,13 @@ namespace RoboSharp
         public static bool IsRunHoursStringValid(string runHours)
         {
             if (string.IsNullOrWhiteSpace(runHours)) return true;
-            if (!RunHours_OverallRegex.IsMatch(runHours.Trim())) return false;
-            var times = RunHours_OverallRegex.Match(runHours.Trim());
-            bool StartMatch = RunHours_Check1.IsMatch(times.Groups["StartTime"].Value) || RunHours_Check2.IsMatch(times.Groups["StartTime"].Value);
-            bool EndMatch = RunHours_Check1.IsMatch(times.Groups["EndTime"].Value) || RunHours_Check2.IsMatch(times.Groups["EndTime"].Value);
-            return StartMatch && EndMatch;
+            return RunHoursRegex().IsMatch(runHours);
         }
 
         /// <inheritdoc cref="IsRunHoursStringValid(string)"/>
         public bool CheckRunHoursString(string runHours) => IsRunHoursStringValid(runHours);
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Add file filters to the <see cref="FileFilter"/> property.

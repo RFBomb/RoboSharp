@@ -15,7 +15,7 @@ namespace RoboSharp
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/SelectionOptions"/>
     /// </remarks>
-    public class SelectionOptions : ICloneable
+    public partial class SelectionOptions : ICloneable
     {
         #region Constructors 
 
@@ -111,7 +111,14 @@ namespace RoboSharp
         /// <remarks>
         /// Regex Tester to use with <see cref="Regex.Matches(string)"/> to get all the matches from a string.
         /// </remarks>
-        public static readonly Regex FileFolderNameRegexSplitter = new Regex("(?<VALUE>\".+?\"|[^\\s\\,\"\\|]+)", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+        public static readonly Regex FileFolderNameRegexSplitter = GetFileFolderNameRegex();
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex("(?<VALUE>\".+?\"|[^\\s\\,\"\\|]+)", RegexOptions.Compiled | RegexOptions.ExplicitCapture, 1000)]
+        private static partial Regex GetFileFolderNameRegex();
+#else
+        private static Regex GetFileFolderNameRegex() => new Regex("(?<VALUE>\".+?\"|[^\\s\\,\"\\|]+)", RegexOptions.Compiled | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(1000));
+#endif
 
         /// <summary>
         /// Use { <see cref="FileFolderNameRegexSplitter"/> } to split the <paramref name="inputString"/>, then add the matches to the suppplied <paramref name="list"/>.
@@ -130,7 +137,7 @@ namespace RoboSharp
             }
         }
 
-        #endregion
+#endregion
 
         #region Public Properties
 
@@ -477,8 +484,8 @@ namespace RoboSharp
         public static FileAttributes? ConvertFileAttrStringToEnum(string attributes)
         {
             if (string.IsNullOrWhiteSpace(attributes)) return null;
-            attributes = attributes.ToUpper();
-            if (!System.Text.RegularExpressions.Regex.IsMatch(attributes, @"^[RASHCNETO]{0,9}$", RegexOptions.Compiled)) throw new ArgumentException("Invalid RASHCNETO string!");
+            attributes = new StringBuilder(attributes).RemoveWhiteSpace().ToUpper().ToString();
+            if (!IsRASHCENTO(attributes)) throw new ArgumentException("Invalid RASHCNETO string!");
             FileAttributes? attr = null;
             if (attributes.Contains('R')) attr = attr.HasValue ? attr |= FileAttributes.ReadOnly : FileAttributes.ReadOnly;
             if (attributes.Contains('A')) attr = attr.HasValue ? attr |= FileAttributes.Archive : FileAttributes.Archive;
@@ -491,6 +498,14 @@ namespace RoboSharp
             if (attributes.Contains('O')) attr = attr.HasValue ? attr |= FileAttributes.Offline : FileAttributes.Offline;
             return attr;
         }
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex("^[RASHCNETO]{0,9}$")]
+        private static partial Regex RashcnetoRegex();
+        private static bool IsRASHCENTO(string data) => RashcnetoRegex().IsMatch(data);
+#else
+        private static bool IsRASHCENTO(string data) => Regex.IsMatch(data, "^[RASHCNETO]{0,9}$");
+#endif
 
         /// <summary>
         /// Adds the supplied <paramref name="fileExclusions"/> to the <see cref="ExcludedFiles"/> collection
@@ -536,7 +551,7 @@ namespace RoboSharp
                 if (!ExcludeDirectories.IsNullOrWhiteSpace())
                     options.Append(string.Format(EXCLUDE_DIRECTORIES, ExcludeDirectories));
             }
-#pragma warning restore CS0618 
+#pragma warning restore CS0618
             if (ExcludeChanged)
                 options.Append(EXCLUDE_CHANGED);
             if (ExcludeNewer)
