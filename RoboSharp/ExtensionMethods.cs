@@ -326,6 +326,17 @@ namespace RoboSharp
             return -1;
         }
 
+        internal static int LastIndexOf(this StringBuilder builder, params char[] chars)
+        {
+            if (builder is null) throw new ArgumentNullException(nameof(builder));
+            for (int i = builder.Length - 1; i >= 0; i--)
+            {
+                if (chars.Contains(builder[i]))
+                    return i;
+            }
+            return -1;
+        }
+
         /// <summary>
         /// <see cref="StringBuilder.Remove(int, int)"/> but handles the <paramref name="length"/> exceeding character count
         /// </summary>
@@ -341,6 +352,25 @@ namespace RoboSharp
         internal static bool RemoveString(this StringBuilder builder, string searchText)
         {
             return RemoveString(builder, searchText, null);
+        }
+
+        /// <summary>Removes all white space from the builder</summary>
+        internal static StringBuilder RemoveWhiteSpace(this StringBuilder builder)
+        {
+            for (int i = builder.Length - 1; i >= 0; i--)
+                if (Char.IsWhiteSpace(builder[i]))
+                    builder.Remove(i, 1);
+            return builder;
+        }
+
+        /// <summary>Removes any characters in the collection from the builder.</summary>
+        internal static StringBuilder RemoveChars(this StringBuilder builder, params char[] chars)
+        {
+            bool trimWhiteSpace = chars.Contains(' ');
+            for (int i = builder.Length - 1; i >= 0; i--)
+                if (chars.Contains(builder[i]) || (trimWhiteSpace && Char.IsWhiteSpace(builder[i])))
+                    builder.Remove(i, 1);
+            return builder;
         }
 
         /// <returns>True if the first occurence was removed, otherwise false</returns>
@@ -411,6 +441,13 @@ namespace RoboSharp
                 else
                     return false;
             return true;
+        }
+
+        public static StringBuilder ToUpper(this StringBuilder builder)
+        {
+            for (int i = 0; i < builder.Length; i++)
+                builder[i] = char.ToUpper(builder[i]);
+            return builder;
         }
 
         public static StringBuilder Trim(this StringBuilder builder) => builder.TrimStart().TrimEnd();
