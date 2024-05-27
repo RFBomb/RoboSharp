@@ -9,13 +9,14 @@ namespace RoboSharp.DefaultConfigurations
     /// <summary>
     /// This is the Default Configuration class to use
     /// </summary>
-    internal class RoboSharpConfig_EN : RoboSharpConfiguration
+    internal partial class RoboSharpConfig_EN : RoboSharpConfiguration
     {
+        private const string _ErrorToken = "ERROR";
+
         public RoboSharpConfig_EN() : base()
         {
-            errorToken = "ERROR";
-            errorTokenRegex = RoboSharpConfiguration.ErrorTokenRegexGenerator(errorToken);
-            //errorTokenRegex = new Regex($" ERROR " + @"(\d{1,3}) \(0x\d{8}\) ", RegexOptions.Compiled);            
+            errorToken = _ErrorToken;
+            errorTokenRegex = GetErrorTokenRegex();
 
             // < File Tokens >
 
@@ -35,5 +36,12 @@ namespace RoboSharp.DefaultConfigurations
             LogParsing_ExistingDir = "Existing Dir";
             LogParsing_DirectoryExclusion = "named";
         }
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(ErrorTokenPatternPrefix + _ErrorToken + ErrorTokenPatternSuffix, ErrorTokenOptions, 1000)]
+        internal static partial Regex GetErrorTokenRegex();
+#else
+        private static Regex GetErrorTokenRegex() => RoboSharpConfiguration.ErrorTokenRegexGenerator(_ErrorToken);
+#endif
     }
 }
