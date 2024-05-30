@@ -8,7 +8,6 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using RoboSharp.Interfaces;
 
-[assembly:InternalsVisibleTo("RoboSharp.UnitTests")]
 namespace RoboSharp.Results
 {
     /// <summary>
@@ -266,9 +265,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Set the values for this object to 0
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         public void Reset()
         {
             Combined_BytesPerSec = 0;
@@ -281,9 +278,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Set the values for this object to 0
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Reset(bool enablePropertyChangeEvent)
         {
             EnablePropertyChangeEvent = enablePropertyChangeEvent;
@@ -315,9 +310,7 @@ namespace RoboSharp.Results
         /// Setting this to TRUE will instead combine the calculated average of the <see cref="AverageSpeedStatistic"/>, treating it as a single <see cref="SpeedStatistic"/> object. <br/>
         /// Ignore the private fields, and instead use the calculated speeds)
         /// </param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Add(ISpeedStatistic stat, bool ForceTreatAsSpeedStat = false)
         {
             if (stat == null) return;
@@ -335,9 +328,7 @@ namespace RoboSharp.Results
         /// <param name="stats">SpeedStatistic collection to add</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
         /// <inheritdoc cref="Add(ISpeedStatistic, bool)" path="/remarks"/>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Add(IEnumerable<ISpeedStatistic> stats, bool ForceTreatAsSpeedStat = false)
         {
             foreach (ISpeedStatistic stat in stats)
@@ -353,9 +344,7 @@ namespace RoboSharp.Results
         /// </summary>
         /// <param name="stat">Statistics Item to add</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Subtract(SpeedStatistic stat, bool ForceTreatAsSpeedStat = false)
         {
             if (stat == null) return;
@@ -382,9 +371,7 @@ namespace RoboSharp.Results
         /// </summary>
         /// <param name="stats">SpeedStatistic collection to subtract</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Subtract(IEnumerable<SpeedStatistic> stats, bool ForceTreatAsSpeedStat = false)
         {
             foreach (SpeedStatistic stat in stats)
@@ -398,9 +385,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Immediately recalculate the BytesPerSec and MegaBytesPerMin values
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void CalculateAverage()
         {
             EnablePropertyChangeEvent = false;

@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
+[assembly: InternalsVisibleTo("RoboSharp.UnitTests")]
+[assembly: InternalsVisibleTo("RoboSharp.Benchmarks")]
 namespace RoboSharp
 {
     internal static class ApplicationConstants
@@ -11,7 +14,7 @@ namespace RoboSharp
         /// </summary>
         static ApplicationConstants()
         {
-#if NETCOREAPP // Ensure that encoding 437 is supported
+#if !NETFRAMEWORK // Ensure that encoding 437 is supported, which is only available in NetFramework by default
             CodePagesEncodingProvider.Instance.GetEncoding(437);
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif

@@ -14,9 +14,9 @@ namespace RoboSharp
 {
     internal static class ExtensionMethods
     {
-#if NETSTANDARD2_0 || NET452_OR_GREATER
+#if NETSTANDARD2_0 || NETFRAMEWORK
 
-        // Adds the TryDequeue method to Net452 & NetStandard, since it was not introduced until .NetStandard2.1
+        // Adds the TryDequeue method to NetStandard2.0, since it was not introduced until .NetStandard2.1
         internal static bool TryDequeue<T>(this Queue<T> queue, out T result)
         {
             try

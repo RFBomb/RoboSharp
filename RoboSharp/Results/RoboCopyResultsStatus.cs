@@ -130,9 +130,7 @@ namespace RoboSharp.Results
 
         #region < RaiseEvent Methods >
 
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         private object[] StoreCurrentValues()
         {
             return new object[10] 
@@ -141,9 +139,7 @@ namespace RoboSharp.Results
             };
         }
 
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         private void CompareAndRaiseEvents(object[] OriginalValues)
         {
             object[] CurrentValues = StoreCurrentValues();
@@ -166,9 +162,7 @@ namespace RoboSharp.Results
         /// </summary>
         /// <remarks>If any were Cancelled, set the WasCancelled property to TRUE. Otherwise combine the exit codes.</remarks>
         /// <param name="status">ExitStatus to combine with</param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         public void CombineStatus(RoboCopyExitStatus status)
         {
             if (status == null) return;
@@ -223,9 +217,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Reset the value of the object
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         public void Reset()
         {
             object[] OriginalValues = EnablePropertyChangeEvent ? StoreCurrentValues() : null;

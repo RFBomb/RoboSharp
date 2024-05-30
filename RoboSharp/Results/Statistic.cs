@@ -761,9 +761,7 @@ namespace RoboSharp.Results
         /// Events are deferred until all value changes have completed.
         /// </summary>
         /// <param name="stat">Statistics Item to subtract</param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         public void Subtract(IStatistic stat)
         {
             if (stat.Type == this.Type && stat.NonZeroValue)
