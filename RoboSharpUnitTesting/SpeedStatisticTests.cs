@@ -18,8 +18,18 @@ namespace RoboSharp.UnitTests
         [TestMethod]
         public void Test_ParseBytesPerSecond(string input, object expected)
         {
-            decimal expectedValue = Convert.ToDecimal(expected);
-            Assert.AreEqual(expectedValue, SpeedStatistic.ParseBytesPerSecond(input));
+            var originalCulture = Thread.CurrentThread.CurrentCulture;
+            try
+            {
+                //test using the invariant culture
+                Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+                decimal expectedValue = Convert.ToDecimal(expected);
+                Assert.AreEqual(expectedValue, SpeedStatistic.ParseBytesPerSecond(input));
+            }
+            finally
+            {
+                Thread.CurrentThread.CurrentCulture = originalCulture;
+            }
         }
 
         [DataRow("30 799,068", 30799.068)]
@@ -29,8 +39,19 @@ namespace RoboSharp.UnitTests
         [TestMethod]
         public void Test_ParseMegaBytesPerMinute(string input, object expected)
         {
-            decimal expectedValue = Convert.ToDecimal(expected);
-            Assert.AreEqual(expectedValue, SpeedStatistic.ParseMegabytesPerMinute(input));
+            var originalCulture = Thread.CurrentThread.CurrentCulture;
+            try
+            {
+                //test using the invariant culture
+                Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+                decimal expectedValue = Convert.ToDecimal(expected);
+                Assert.AreEqual(expectedValue, SpeedStatistic.ParseMegabytesPerMinute(input));
+            }
+            finally
+            {
+                Thread.CurrentThread.CurrentCulture = originalCulture;
+            }
+            
         }
 
         [DataRow(" Débit :           6 621 000 Octets/sec.", " Débit :            378,857 Méga-octets/min.", "fr-FR")]
@@ -46,14 +67,14 @@ namespace RoboSharp.UnitTests
                 var value = SpeedStatistic.Parse(sBPS, sMB);
                 Assert.IsNotNull(value);
                 Console.WriteLine(value.ToString());
-                Assert.IsTrue(value.BytesPerSec > 0 && value.MegaBytesPerMin > 0, "\nInvariant Culture Parsing Failed - Returned value of 0");
+                Assert.IsTrue(value.BytesPerSec > 0 && value.MegaBytesPerMin > 0, $"\nInvariant Culture Parsing Failed - Returned value of {value}");
 
                 // test again using specified culture
                 Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo(culture);
                 value = SpeedStatistic.Parse(sBPS, sMB);
                 Assert.IsNotNull(value);
                 Console.WriteLine(value.ToString());
-                Assert.IsTrue(value.BytesPerSec > 0 && value.MegaBytesPerMin > 0, $"\nCulture '{culture}' Parsing Failed - Returned value of 0");
+                Assert.IsTrue(value.BytesPerSec > 0 && value.MegaBytesPerMin > 0, $"\nCulture '{culture}' Parsing Failed - Returned value of {value}");
             }
             finally
             {
