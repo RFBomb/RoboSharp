@@ -27,7 +27,7 @@ namespace RoboSharp
             };
         }
 
-        private static readonly IDictionary<string, RoboSharpConfiguration> defaultConfigurations;
+        internal static readonly IReadOnlyDictionary<string, RoboSharpConfiguration> defaultConfigurations;
 
         #region Constructors 
 
