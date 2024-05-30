@@ -159,6 +159,8 @@ namespace RoboSharp
 
         #region < Private Vars >
 
+        private static char[] _OutputDataSplitter; // Static array storage used for processing output data from robocopy - created on first run
+
         // set up in Constructor
         private CopyOptions copyOptions;
         private SelectionOptions selectionOptions;
@@ -186,7 +188,8 @@ namespace RoboSharp
         /// <summary> 
         /// Stores the LastData processed by <see cref="Process_OutputDataReceived(object, DataReceivedEventArgs)"/> 
         /// </summary>
-        private string LastDataReceived = "";
+        private string _lastDataReceived;
+        private Match _lastErrorRegexMatch;
 
         #endregion Private Vars
 
@@ -398,7 +401,6 @@ namespace RoboSharp
 
         #region < Start Methods >
 
-#if NET45_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP3_1_OR_GREATER
         /// <summary>
         /// awaits <see cref="Start(string, string, string)"/> then returns the results.
         /// </summary>
@@ -418,8 +420,6 @@ namespace RoboSharp
             await Start_ListOnly(domain, username, password);
             return GetResults();
         }
-
-#endif
 
         /// <summary>
         /// Run the currently selected options in ListOnly mode by setting <see cref="LoggingOptions.ListOnly"/> = TRUE
@@ -450,7 +450,7 @@ namespace RoboSharp
             if (disposedValue) throw GetDisposedException();
             if (_process != null | IsRunning) throw new InvalidOperationException("RoboCommand.Start() method cannot be called while process is already running / IsRunning = true.");
 
-#if !NET40_OR_GREATER && !NET6_0_OR_GREATER
+#if !NETFRAMEWORK && !NET6_0_OR_GREATER
             if (!username.IsNullOrWhiteSpace()) throw new PlatformNotSupportedException("Authentication is only supported in .Net Framework >= 4.0 and .Net >= 6.0.");
 #endif
 
@@ -717,34 +717,38 @@ namespace RoboSharp
         }
 
         //lang=regex
-        private const string _outputProgressDataPattern = "^[0-9]+[.]?[0-9]*%";
+        private const string _outputProgressDataPattern = "^[0-9]+[.,]?[0-9]*%";
         //lang=regex -- Regex to parse the string for FileCount, Path, and Type (Description)
         private const string _outputDirectoryDataPattern = "^(?<Type>\\*?[a-zA-Z]{0,10}\\s?[a-zA-Z]{0,3})\\s*(?<FileCount>[-]{0,1}[0-9]{1,100})\\t(?<Path>.+)";
 
 #if NET7_0_OR_GREATER
-        [GeneratedRegex(_outputProgressDataPattern, RegexOptions.CultureInvariant, 1000)]
-        internal partial Regex Process_OutputProgressDataRegex();
+        [GeneratedRegex(_outputProgressDataPattern, RegexOptions.None, 1000)]
+        internal static partial Regex Process_OutputProgressDataRegex();
 
-        [GeneratedRegex(_outputDirectoryDataPattern, RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, 1000)]
-        internal partial Regex Process_OutputDirectoryDataRegex();
+        [GeneratedRegex(_outputDirectoryDataPattern, RegexOptions.ExplicitCapture, 1000)]
+        internal static partial Regex Process_OutputDirectoryDataRegex();
 #else
         private static Regex _OutputDataRegex_Progress;
         private static Regex _OutputDataRegex_Directory;
-        private static Regex Process_OutputProgressDataRegex() => _OutputDataRegex_Progress ??= new Regex(_outputProgressDataPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(1000));
-        private static Regex Process_OutputDirectoryDataRegex() => _OutputDataRegex_Directory ??= new Regex(_outputDirectoryDataPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(1000));
+        internal static Regex Process_OutputProgressDataRegex() => _OutputDataRegex_Progress ??= new Regex(_outputProgressDataPattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
+        internal static Regex Process_OutputDirectoryDataRegex() => _OutputDataRegex_Directory ??= new Regex(_outputDirectoryDataPattern, RegexOptions.Compiled | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(1000));
 #endif
 
         /// <summary> React to Process.StandardOutput </summary>
         void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            string lastData = _resultsBuilder?.LastLine ?? "";
-            _resultsBuilder?.AddOutput(e.Data);
-
             if (e.Data == null) return; // Nothing to do
-            var data = e.Data.Trim().Replace("\0", ""); // ?
-            if (data.IsNullOrWhiteSpace()) return;  // Nothing to do
-            if (LastDataReceived == data) return;   // Sometimes RoboCopy reports same item multiple times - Typically for Progress indicators
-            LastDataReceived = data;
+            string data = e.Data.Replace("\0", string.Empty).Trim(); // remove null characters (is this needed?), then trim (required)
+
+            if (string.IsNullOrWhiteSpace(data))
+            {
+                //adds the whitespace to the results builder. Nothing else to do.
+                _resultsBuilder?.AddOutput(e.Data);
+                return;  
+            }
+
+            if (data == _lastDataReceived) return;   // Sometimes RoboCopy reports same item multiple times - Typically for Progress indicators
+            _lastDataReceived = data;
 
             if (Process_OutputProgressDataRegex().IsMatch(data))
             {
@@ -752,7 +756,7 @@ namespace RoboSharp
                 var currentDir = ProgressEstimator?.CurrentDir;
 
                 //Increment ProgressEstimator
-                if (data.StartsWith("100%"))
+                if (data.Equals("100%"))
                     ProgressEstimator?.AddFileCopied(currentFile);
                 else
                     ProgressEstimator?.SetCopyOpStarted();
@@ -767,8 +771,12 @@ namespace RoboSharp
             }
             else
             {
+                // add the untrimmed data to the results builder
+                string lastData = _resultsBuilder?.LastLine ?? "";
+                _resultsBuilder?.AddOutput(e.Data); 
+
                 //Parse the string to determine which event to raise
-                var splitData = data.Split(new char[] { '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                var splitData = data.Split(_OutputDataSplitter ??= new char[]{ '\t' }, StringSplitOptions.RemoveEmptyEntries);
 
                 if (splitData.Length == 2) // Directory
                 {
@@ -804,28 +812,28 @@ namespace RoboSharp
                     {
                         FileClass = splitData[0].Trim(),
                         FileClassType = FileClassType.File,
-                        Size = long.TryParse(splitData[1].Trim(), out long size) ? size : 0,
+                        Size = long.TryParse(splitData[1], out long size) ? size : 0,
                         Name = splitData[2]
                     };
                     ProgressEstimator?.AddFile(file);
                     OnFileProcessed?.Invoke(this, new FileProcessedEventArgs(file));
                 }
-                else if (Configuration.ErrorTokenRegex.IsMatch(data)) // Error Message - Mark the current file as FAILED immediately - Don't raise OnError event until error description comes in though
+                else if (_lastErrorRegexMatch?.Success ?? false) // Error Message - Uses previous data instead since RoboCopy reports errors onto line 1, then description onto line 2.
+                {
+                    ErrorEventArgs args = new ErrorEventArgs(lastData, data, _lastErrorRegexMatch);
+                    _lastErrorRegexMatch = null;
+                    _resultsBuilder.AddErrorOutput(lastData, data);
+                    _resultsBuilder.RoboCopyErrors.Add(args);
+                    OnError?.Invoke(this, args);
+                }
+                else if ((_lastErrorRegexMatch = Configuration.ErrorTokenRegex.Match(data)).Success) // Error Message - Mark the current file as FAILED immediately - Don't raise OnError event until error description comes in though
                 {
                     /* 
                      * Mark the current file as Failed
                      * TODO: This data may have to be parsed to determine if it involved the current file's filename, or some other error. At time of writing, it appears that it doesn't require this check.
                      * */
-
                     ProgressEstimator.FileFailed = true;
-                }
-                else if (Configuration.ErrorTokenRegex.IsMatch(lastData)) // Error Message - Uses previous data instead since RoboCopy reports errors onto line 1, then description onto line 2.
-                {
-                    ErrorEventArgs args = new ErrorEventArgs(lastData, data, Configuration.ErrorTokenRegex);
-                    _resultsBuilder.RoboCopyErrors.Add(args);
-
-                    //Check to Raise the event
-                    OnError?.Invoke(this, args);
+                    return;
                 }
                 else if (!data.StartsWith("----------")) // System Message
                 {

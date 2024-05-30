@@ -120,7 +120,7 @@ namespace RoboSharp
         private bool ErrRegexInitRequired = false;
 
         //lang=regex
-        internal const string ErrorTokenPatternPrefix = "(?<Date>.*?)\\s+";
+        internal const string ErrorTokenPatternPrefix = "^(?<Date>[0-9]+.*?)\\s+";
         //lang=regex
         internal const string ErrorTokenPatternSuffix = "\\s+(?<ErrCode>[0-9]+)\\s+(?<SignedErrCode>\\([0-9Xx]+\\))\\s+(?<Descrip>[\\w\\s]+(?!:))(?<Path>.*)";
         internal const RegexOptions ErrorTokenOptions = RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture;

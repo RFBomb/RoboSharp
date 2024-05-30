@@ -39,7 +39,7 @@ namespace RoboSharp.DefaultConfigurations
 
 #if NET7_0_OR_GREATER
         [GeneratedRegex(ErrorTokenPatternPrefix + _ErrorToken + ErrorTokenPatternSuffix, ErrorTokenOptions, 1000)]
-        internal static partial Regex GetErrorTokenRegex();
+        private static partial Regex GetErrorTokenRegex();
 #else
         private static Regex GetErrorTokenRegex() => RoboSharpConfiguration.ErrorTokenRegexGenerator(_ErrorToken);
 #endif

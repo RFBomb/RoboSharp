@@ -68,23 +68,11 @@ namespace RoboSharp.Results
 
         #endregion
 
-        // Regex used inside of AddOutput(string)
-#if NET7_0_OR_GREATER
-        [GeneratedRegex("^\\s*[\\d\\.,]+%\\s*$", RegexOptions.None, 1000)]
-        private static partial Regex ProgressIndicatorRegex();
-#else
-        private static Regex ProgressIndicatorRegex() => _progressIndicatorRegex ??= new Regex(@"^\s*[\d\.,]+%\s*$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
-        private static Regex _progressIndicatorRegex;
-#endif
-
         /// <summary>
         /// Add a LogLine reported by RoboCopy to the LogLines list.
         /// </summary>
         internal void AddOutput(string output)
         {
-            if (output == null)
-                return;
-
             if (_isLoggingHeader && output.Contains("--------------------------------"))
             {
                 _headerSepCount += 1;
@@ -93,8 +81,6 @@ namespace RoboSharp.Results
                 _lastLine = output;
                 return;
             }
-            else if (!_isLoggingHeader && ProgressIndicatorRegex().IsMatch(output)) //Ignore Progress Indicators
-                return;
 
             if (_isLoggingHeader || _enableFileLogging) _outputLines.Add(output); // Bypass logging the file names if EnableLogging is set to false
             if (!_noJobSummary)
@@ -103,6 +89,17 @@ namespace RoboSharp.Results
                 _lastLines.Enqueue(output);
             }
             _lastLine = output;
+        }
+
+        /// <summary>
+        /// Ensures the Error Data gets added to the log lines
+        /// </summary>
+        internal void AddErrorOutput(string line1, string line2)
+        {
+            if (_isLoggingHeader | _enableFileLogging) return; // should already be logged
+            _outputLines.Add(line1);
+            _outputLines.Add(line2);
+            _lastLine = line2;
         }
 
         /// <summary>
