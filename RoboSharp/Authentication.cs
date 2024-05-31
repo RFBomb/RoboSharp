@@ -88,7 +88,7 @@ namespace RoboSharp
         {
             AuthenticationResult result;
 
-#if NET40_OR_GREATER
+#if NETFRAMEWORK
             // Authenticate on Target Server -- Create user if username is provided, else null
             ImpersonatedUser impersonation = username.IsNullOrWhiteSpace() ? null : impersonation = new ImpersonatedUser(username, domain, password);
 #endif
@@ -109,7 +109,7 @@ namespace RoboSharp
             result = auth(command);
 #endif
 
-#if NET40_OR_GREATER
+#if NETFRAMEWORK
             //Dispose Authentification
             impersonation?.Dispose();
 #endif

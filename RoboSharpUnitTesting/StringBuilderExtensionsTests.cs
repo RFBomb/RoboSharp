@@ -44,6 +44,18 @@ namespace RoboSharp.UnitTests
         }
 
         [TestMethod()]
+        public void LastIndexOfTest()
+        {
+            var builder = new StringBuilder("ABC123XYZ");
+            Assert.AreEqual(0, builder.LastIndexOf('A'));
+            Assert.AreEqual(1, builder.LastIndexOf('B'));
+            Assert.AreEqual(2, builder.LastIndexOf('C'));
+            Assert.AreEqual(5, builder.LastIndexOf('3'));
+            Assert.AreEqual(8, builder.LastIndexOf('Z'));
+            Assert.AreEqual(-1, builder.LastIndexOf('7'));
+        }
+
+        [TestMethod()]
         public void SubStringTest()
         {
             string expected = "Wolf Pack";

@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,7 +13,7 @@ namespace RoboSharp.Results
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/ResultsBuilder"/>
     /// </remarks>
-    internal class ResultsBuilder
+    internal partial class ResultsBuilder
     {
         internal ResultsBuilder(RoboCommand roboCommand, ProgressEstimator estimator) {
             RoboCommand = roboCommand;
@@ -71,9 +73,6 @@ namespace RoboSharp.Results
         /// </summary>
         internal void AddOutput(string output)
         {
-            if (output == null)
-                return;
-
             if (_isLoggingHeader && output.Contains("--------------------------------"))
             {
                 _headerSepCount += 1;
@@ -82,8 +81,6 @@ namespace RoboSharp.Results
                 _lastLine = output;
                 return;
             }
-            else if (!_isLoggingHeader && Regex.IsMatch(output, @"^\s*[\d\.,]+%\s*$", RegexOptions.Compiled)) //Ignore Progress Indicators
-                return;
 
             if (_isLoggingHeader || _enableFileLogging) _outputLines.Add(output); // Bypass logging the file names if EnableLogging is set to false
             if (!_noJobSummary)
@@ -92,6 +89,17 @@ namespace RoboSharp.Results
                 _lastLines.Enqueue(output);
             }
             _lastLine = output;
+        }
+
+        /// <summary>
+        /// Ensures the Error Data gets added to the log lines
+        /// </summary>
+        internal void AddErrorOutput(string line1, string line2)
+        {
+            if (_isLoggingHeader | _enableFileLogging) return; // should already be logged
+            _outputLines.Add(line1);
+            _outputLines.Add(line2);
+            _lastLine = line2;
         }
 
         /// <summary>
@@ -148,7 +156,7 @@ namespace RoboSharp.Results
             while (_lastLines.TryDequeue(out string line))
             {
                 if (!_enableFileLogging) _outputLines.Add(line); // Add the summary lines to the output lines if they were not already recorded
-                if (line.Contains(":") && !line.Contains("\\"))
+                if (line.Contains(':') && !line.Contains('\\'))
                     res.Add(line);
             }
             return res;

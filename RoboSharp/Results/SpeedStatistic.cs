@@ -8,7 +8,6 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using RoboSharp.Interfaces;
 
-[assembly:InternalsVisibleTo("RoboSharp.UnitTests")]
 namespace RoboSharp.Results
 {
     /// <summary>
@@ -18,7 +17,7 @@ namespace RoboSharp.Results
     /// <remarks>
     /// <see href="https://github.com/tjscience/RoboSharp/wiki/SpeedStatistic"/>
     /// </remarks>
-    public class SpeedStatistic : INotifyPropertyChanged, ISpeedStatistic
+    public partial class SpeedStatistic : INotifyPropertyChanged, ISpeedStatistic
     {
         /// <summary>
         /// Create new SpeedStatistic
@@ -50,8 +49,8 @@ namespace RoboSharp.Results
 
         #region < Private & Protected Members >
 
-        private decimal BytesPerSecField = 0;
-        private decimal MegaBytesPerMinField = 0;
+        private decimal BytesPerSecField;
+        private decimal MegaBytesPerMinField;
 
         /// <summary> This toggle Enables/Disables firing the <see cref="PropertyChanged"/> Event to avoid firing it when doing multiple consecutive changes to the values </summary>
         protected bool EnablePropertyChangeEvent { get; set; } = true;
@@ -126,30 +125,64 @@ namespace RoboSharp.Results
         internal static SpeedStatistic Parse(string line1, string line2)
         {
             var res = new SpeedStatistic();
-
-            Regex pattern = new Regex(@"\d+([.,]\d+)+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-            Match match = pattern.Match(line1);
-            if (match.Success)
-            {
-                res.BytesPerSec = decimal.Parse(match.Value.Replace(".",""));
-            }
-
-            match = pattern.Match(line2);
-            if (match.Success)
-            {
-                res.MegaBytesPerMin = decimal.Parse(sanitizeMB(match.Value));
-            }
-
+            res.BytesPerSec = ParseBytesPerSecond(line1);
+            res.MegaBytesPerMin = ParseMegabytesPerMinute(line2);
             return res;
+        }
 
-            static string sanitizeMB(string text)
+        //lang = regex
+        private const string _speedPattern = "(\\d+[.,\\s]?)+";
+
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(_speedPattern, RegexOptions.CultureInvariant, 1000)]
+        private static partial Regex SpeedStatisticRegex();
+        private static Match SpeedStatisticRegex(string data) => SpeedStatisticRegex().Match(data);
+#else
+        private static Match SpeedStatisticRegex(string data) => Regex.Match(data, _speedPattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(1000));
+#endif
+        internal static decimal ParseBytesPerSecond(string line)
+        {
+            Match match = SpeedStatisticRegex(line);
+            if (match.Success)
             {
-                int decPoint = text.LastIndexOfAny(new char[] { ',', '.' });
-                if (decPoint == -1) return text;
-                string tValue = text.Substring(0, decPoint).Replace(".", ""); // sanitize thousands
-                string dValue = text.Substring(decPoint).Replace(",", "."); // sanitize decimal
-                return tValue + dValue;
+                if (decimal.TryParse(match.Value, out decimal value))
+                    return value;
+                else
+                {
+                    // parsing in default culture failed, convert to invariant culture
+                    StringBuilder sanitizer = new StringBuilder(match.Value).RemoveChars('.', ',', ' ');
+                    if (decimal.TryParse(sanitizer.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out value))
+                        return value;
+                }
             }
+            return 0;
+        }
+
+        internal static decimal ParseMegabytesPerMinute(string line)
+        {
+            Match match = SpeedStatisticRegex(line);
+            if (match.Success)
+            {
+                if (decimal.TryParse(match.Value, out decimal value))
+                    return value;
+                else
+                {
+                    // parsing in default culture failed, convert to invariant culture
+                    StringBuilder sanitizer = new StringBuilder(match.Value).RemoveWhiteSpace();
+                    int decPoint = sanitizer.LastIndexOf('.', ',');
+                    // replace any decimal point group separators with a comma for use with the invariant culture
+                    if (decPoint > 1)
+                    {
+                        sanitizer[decPoint] = '.';
+                        for (int i = 0; i < decPoint; i++)
+                            if (sanitizer[i] == '.')
+                                sanitizer[i] = ',';
+                    }
+                    if (decimal.TryParse(sanitizer.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out value))
+                        return value;
+                }
+            }
+            return 0;
         }
 
         #endregion
@@ -198,7 +231,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Clone an AverageSpeedStatistic
         /// </summary>
-        public AverageSpeedStatistic(AverageSpeedStatistic stat) : base(stat) 
+        public AverageSpeedStatistic(AverageSpeedStatistic stat) : base(stat)
         {
             Divisor = stat.Divisor;
             Combined_BytesPerSec = stat.BytesPerSec;
@@ -232,9 +265,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Set the values for this object to 0
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         public void Reset()
         {
             Combined_BytesPerSec = 0;
@@ -247,9 +278,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Set the values for this object to 0
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Reset(bool enablePropertyChangeEvent)
         {
             EnablePropertyChangeEvent = enablePropertyChangeEvent;
@@ -281,9 +310,7 @@ namespace RoboSharp.Results
         /// Setting this to TRUE will instead combine the calculated average of the <see cref="AverageSpeedStatistic"/>, treating it as a single <see cref="SpeedStatistic"/> object. <br/>
         /// Ignore the private fields, and instead use the calculated speeds)
         /// </param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Add(ISpeedStatistic stat, bool ForceTreatAsSpeedStat = false)
         {
             if (stat == null) return;
@@ -301,9 +328,7 @@ namespace RoboSharp.Results
         /// <param name="stats">SpeedStatistic collection to add</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
         /// <inheritdoc cref="Add(ISpeedStatistic, bool)" path="/remarks"/>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Add(IEnumerable<ISpeedStatistic> stats, bool ForceTreatAsSpeedStat = false)
         {
             foreach (ISpeedStatistic stat in stats)
@@ -319,9 +344,7 @@ namespace RoboSharp.Results
         /// </summary>
         /// <param name="stat">Statistics Item to add</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Subtract(SpeedStatistic stat, bool ForceTreatAsSpeedStat = false)
         {
             if (stat == null) return;
@@ -348,9 +371,7 @@ namespace RoboSharp.Results
         /// </summary>
         /// <param name="stats">SpeedStatistic collection to subtract</param>
         /// <param name="ForceTreatAsSpeedStat"><inheritdoc cref="Add(ISpeedStatistic, bool)"/></param>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void Subtract(IEnumerable<SpeedStatistic> stats, bool ForceTreatAsSpeedStat = false)
         {
             foreach (SpeedStatistic stat in stats)
@@ -364,9 +385,7 @@ namespace RoboSharp.Results
         /// <summary>
         /// Immediately recalculate the BytesPerSec and MegaBytesPerMin values
         /// </summary>
-#if !NET40
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-#endif
         internal void CalculateAverage()
         {
             EnablePropertyChangeEvent = false;
@@ -415,7 +434,7 @@ namespace RoboSharp.Results
             return stat;
         }
 
-        #endregion 
+        #endregion
 
     }
 }

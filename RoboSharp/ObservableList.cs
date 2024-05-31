@@ -153,7 +153,7 @@ namespace RoboSharp
                         // Check for a WPF Control that only accepts the 'RESET' signal
                         var target = handler.Target?.GetType()?.ToString() ?? string.Empty;
                         isWPF = target.StartsWith("System.Windows.Data.");
-                        if (isWPF) ResetArgs = ResetArgs ?? (e.Action == NotifyCollectionChangedAction.Reset ? e : new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                        if (isWPF) ResetArgs ??= (e.Action == NotifyCollectionChangedAction.Reset ? e : new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
                     }
 
                     if (SynchronizationContext.Current == _synchronizationContext)
@@ -170,52 +170,7 @@ namespace RoboSharp
                 }
             }
         }
-        private SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
-
-        #region < Alternate methods for OnCollectionChanged + reasoning why it wasn't used >
-
-        /*
-         * This standard method cannot be used because RoboQueue is adding results onto the ResultsLists as they complete, which means the events may not be on the original thread that RoboQueue was constructed in.
-         * protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e) => CollectionChanged?.Invoke(this, e);
-         */
-
-        // --------------------------------------------------------------------------------------------------------------
-
-        /*
-         * This code was taken from here: https://www.codeproject.com/Articles/64936/Threadsafe-ObservableImmutable-Collection
-         * It works, but its a bit more involved since it loops through all handlers.
-         * This was not used due to being unavailable in some targets. (Same reasoning for creating new class instead of class provided by above link)
-         */
-
-        //        /// <summary>
-        //        /// Raise the <see cref="CollectionChanged"/> event. <para/>
-        //        /// Override this method to provide post-processing of Added/Removed items within derived classes.
-        //        /// </summary>
-        //        /// <param name="e"></param>
-        //        protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-        //        {
-        //            var notifyCollectionChangedEventHandler = CollectionChanged;
-
-        //            if (notifyCollectionChangedEventHandler == null)
-        //                return;
-
-        //            foreach (NotifyCollectionChangedEventHandler handler in notifyCollectionChangedEventHandler.GetInvocationList())
-        //            {
-        //#if NET40_OR_GREATER
-        //                var dispatcherObject = handler.Target as DispatcherObject;
-
-        //                if (dispatcherObject != null && !dispatcherObject.CheckAccess())
-        //                {
-        //                    dispatcherObject.Dispatcher.Invoke(handler, this, e);
-        //                }
-        //                else
-        //#endif
-        //                    handler(this, e); // note : this does not execute handler in target thread's context
-        //            }
-        //        }
-
-        // --------------------------------------------------------------------------------------------------------------
-        #endregion
+        private readonly SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
 
         #endregion
 

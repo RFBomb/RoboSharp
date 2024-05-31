@@ -97,10 +97,9 @@ namespace RoboSharp
         /// Regex used to split the Error Code into its various parts. <br/>
         /// Must have the following groups: Date, ErrCode, SignedErrCode, Descrip, Path
         /// </param>
-        internal ErrorEventArgs(string errorData, string descripData, Regex errTokenRegex)
+        internal ErrorEventArgs(string errorData, string descripData, Match errTokenRegex)
         {
-            var match = errTokenRegex.Match(errorData);
-            var groups = match.Groups;
+            var groups = errTokenRegex.Groups;
 
             //Date
             string dateStr = groups["Date"].Value;

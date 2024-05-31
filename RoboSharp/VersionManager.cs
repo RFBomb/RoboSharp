@@ -37,7 +37,7 @@ namespace RoboSharp
         /// <summary>
         /// True if running in a windows environment, otherwise false.
         /// </summary>
-#if NET452
+#if NETFRAMEWORK
         public static readonly bool IsPlatformWindows = true;
 #else
         public static readonly bool IsPlatformWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -95,7 +95,7 @@ namespace RoboSharp
         {
             if (!IsPlatformWindows) return Environment.OSVersion.Version.ToString();
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             using (var session = Microsoft.Management.Infrastructure.CimSession.Create("."))
 
             {
@@ -106,8 +106,7 @@ namespace RoboSharp
                     return win32OperatingSystemCimInstance.CimInstanceProperties["Version"].Value.ToString();
                 }
             }
-#endif
-#if NET40_OR_GREATER
+#elif NETFRAMEWORK
             using (System.Management.ManagementObjectSearcher objMOS = new System.Management.ManagementObjectSearcher("SELECT * FROM  Win32_OperatingSystem"))
             {
                 foreach (var version in from System.Management.ManagementObject objManagement in objMOS.Get()
