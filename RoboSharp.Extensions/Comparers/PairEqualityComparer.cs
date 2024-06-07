@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Comparers
 {
-    
+
     /// <summary>
     /// Evaulates Source and Destination paths for the supplied items. 
     /// <br/> Objects are Equal if BOTH Source and Destinations match. 
@@ -15,37 +15,35 @@ namespace RoboSharp.Extensions.Helpers
     /// </summary>
     public sealed class PairEqualityComparer : IEqualityComparer<IFilePair>, IEqualityComparer<IDirectoryPair>
     {
-        private readonly static Lazy<PairEqualityComparer> singletonComparer 
-            = new Lazy<PairEqualityComparer>(() => new PairEqualityComparer());
-
         /// <summary> A threadsafe singleton used to compare <see cref="IDirectoryPair"/> and <see cref="IFilePair"/> paths </summary>
-        public static PairEqualityComparer Singleton => singletonComparer.Value;
+        public readonly static PairEqualityComparer Singleton = new PairEqualityComparer();
 
-        private static IFilePairEqualityComparer<IFilePair> FileComparer => IFilePairEqualityComparer<IFilePair>.Singleton;
-        private static IDirectoryPairEqualityComparer<IDirectoryPair> DirComparer => IDirectoryPairEqualityComparer<IDirectoryPair>.Singleton;
+        private readonly static FilePairEqualityComparer<IFilePair> _fileComparer = new FilePairEqualityComparer<IFilePair>();
+        private readonly static DirectoryPairEqualityComparer<IDirectoryPair> _dirComparer = new DirectoryPairEqualityComparer<IDirectoryPair>();
 
-        /// <inheritdoc cref="IFilePairEqualityComparer{T}.Equals(T, T)"/>
+
+        /// <inheritdoc cref="FilePairEqualityComparer{T}.Equals(T, T)"/>
         public static bool AreEqual(IFilePair x, IFilePair y)
         {
-            return FileComparer.Equals(x, y);
+            return _fileComparer.Equals(x, y);
         }
 
-        /// <inheritdoc cref="IDirectoryPairEqualityComparer{T}.Equals(T, T)"/>
+        /// <inheritdoc cref="DirectoryPairEqualityComparer{T}.Equals(T, T)"/>
         public static bool AreEqual(IDirectoryPair x, IDirectoryPair y)
         {
-            return DirComparer.Equals(x, y);
+            return _dirComparer.Equals(x, y);
         }
 
-        /// <inheritdoc cref="IFilePairEqualityComparer{T}.Equals(T, T)"/>
+        /// <inheritdoc cref="FilePairEqualityComparer{T}.Equals(T, T)"/>
         public bool Equals(IFilePair x, IFilePair y)
         {
-            return FileComparer.Equals(x, y);
+            return _fileComparer.Equals(x, y);
         }
 
-        /// <inheritdoc cref="IDirectoryPairEqualityComparer{T}.Equals(T, T)"/>
+        /// <inheritdoc cref="DirectoryPairEqualityComparer{T}.Equals(T, T)"/>
         public bool Equals(IDirectoryPair x, IDirectoryPair y)
         {
-            return DirComparer.Equals(x, y);
+            return _dirComparer.Equals(x, y);
         }
 
         /// <inheritdoc/>

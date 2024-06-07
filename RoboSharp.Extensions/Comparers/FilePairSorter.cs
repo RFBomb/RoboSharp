@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Comparers
 {
     /// <summary>
-    /// Sort FilePairs by their <see cref="ProcessedFileInfo.FileClass"/>
+    /// Sort FilePairs by their <see cref="ProcessedFileInfo.FileClass"/> ( the <see cref="ProcessedFileFlag"/> enum )
     /// </summary>
-    public sealed class FilePairSorter<T> : IComparer<T> where T: IProcessedFilePair
+    public sealed class FilePairSorter<T> : IComparer<T> where T : IProcessedFilePair
     {
         /// <summary>
-        /// 
+        /// The default constructor
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="config">The <see cref="RoboSharpConfiguration"/> used to get the <see cref="ProcessedFileFlag"/> for each <see cref="IProcessedFilePair"/> being compared. </param>
         public FilePairSorter(RoboSharpConfiguration config)
         {
             Config = config;

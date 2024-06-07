@@ -1,21 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Comparers
 {
     /// <summary>
     /// A generic <see cref="IDirectoryPair"/> Equality Comparer. 
     /// <br/> Evaluates if the source and destinations of each pair are equal.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public sealed class IDirectoryPairEqualityComparer<T> : IEqualityComparer<T> where T : IDirectoryPair
+    public sealed class DirectoryPairEqualityComparer<T> : IEqualityComparer<T> where T : IDirectoryPair
     {
-        private readonly static Lazy<IDirectoryPairEqualityComparer<T>> singletonComparer 
-            = new Lazy<IDirectoryPairEqualityComparer<T>>(() => new IDirectoryPairEqualityComparer<T>());
-
-        /// <summary> A threadsafe singleton used to compare <see cref="IFilePair"/> paths </summary>
-        public static IDirectoryPairEqualityComparer<T> Singleton => singletonComparer.Value;
+        /// <summary> A threadsafe singleton used to compare <see cref="IDirectoryPair"/> paths </summary>
+        public static IEqualityComparer<IDirectoryPair> Singleton => PairEqualityComparer.Singleton;
 
         /// <summary>
         /// Compare each path provided by the objects 
@@ -33,4 +29,5 @@ namespace RoboSharp.Extensions.Helpers
             return obj.GetHashCode();
         }
     }
+
 }
