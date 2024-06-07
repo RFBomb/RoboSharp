@@ -5,6 +5,10 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using MSWindows = Windows;
+using Win32 = Windows.Win32;
+using REPARSE_DATA_BUFFER = Windows.Wdk.Storage.FileSystem.REPARSE_DATA_BUFFER;
+
 
 namespace RoboSharp.Extensions.SymbolicLinkSupport
 {
@@ -13,6 +17,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         private const uint genericReadAccess = 0x80000000;
 
         private const uint fileFlagsForOpenReparsePointAndBackupSemantics = 0x02200000;
+        const string PlatformErrorMessage = "This function relies on Windows P/Invoke. Use .Net 6 or newer for platform comaptibility.";
 
         /// <summary>
         /// Flag to indicate that the reparse point is relative
@@ -23,23 +28,13 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// </remarks>
         private const uint symlinkReparsePointFlagRelative = 0x00000001;
 
-        private const int ioctlCommandGetReparsePoint = 0x000900A8;
-
-        private const uint openExisting = 0x3;
-
         private const uint pathNotAReparsePointError = 0x80071126;
-
-        private const uint shareModeAll = 0x7; // Read, Write, Delete
 
         /// <summary> Reparse point tag used to identify symbolic links. </summary>
         private const uint symLinkTag = 0xA000000C; //for Files and Directories
 
         /// <summary> Reparse point tag used to identify mount points and junction points. </summary>
         private const uint junctionPointTag = 0xA0000003; //for Directories Only
-
-        private const int targetIsAFile = 0;
-
-        private const int targetIsADirectory = 1;
 
         /// <summary>
         /// The maximum number of characters for a relative path, using Unicode 2-byte characters.
@@ -55,47 +50,25 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// </remarks>
         private const int maxRelativePathLengthUnicodeChars = 260;
 
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern SafeFileHandle CreateFile(
-            string lpFileName,
-            uint dwDesiredAccess,
-            uint dwShareMode,
-            IntPtr lpSecurityAttributes,
-            uint dwCreationDisposition,
-            uint dwFlagsAndAttributes,
-            IntPtr hTemplateFile);
-
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        static extern bool CreateSymbolicLink(string lpSymlinkFileName, string lpTargetFileName, int dwFlags);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool DeviceIoControl(
-            IntPtr hDevice,
-            uint dwIoControlCode,
-            IntPtr lpInBuffer,
-            int nInBufferSize,
-            IntPtr lpOutBuffer,
-            int nOutBufferSize,
-            out int lpBytesReturned,
-            IntPtr lpOverlapped);
-
         [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool PathRelativePathToW(
-            StringBuilder pszPath,
-            string pszFrom,
-            FileAttributes dwAttrFrom,
-            string pszTo,
-            FileAttributes dwAttrTo);
+            [Out] StringBuilder pszPath,
+            [In] string pszFrom,
+            [In] FileAttributes dwAttrFrom,
+            [In] string pszTo,
+            [In] FileAttributes dwAttrTo);
 
-        public static void CreateAsSymbolicLink(string linkPath, string targetPath, bool isDirectory, bool makeTargetPathRelative = false)
+        public static void CreateSymbolicLink(string linkPath, string targetPath, bool isDirectory, bool makeTargetPathRelative = false)
         {
-            VersionManager.ThrowIfNotWindowsPlatform();
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
             if (makeTargetPathRelative)
             {
                 targetPath = GetTargetPathRelativeToLink(linkPath, targetPath, isDirectory);
             }
 
-            if (!CreateSymbolicLink(linkPath, targetPath, isDirectory ? targetIsADirectory : targetIsAFile) || Marshal.GetLastWin32Error() != 0)
+            var success = Win32.PInvoke.CreateSymbolicLink(linkPath, targetPath, isDirectory ? Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAGS.SYMBOLIC_LINK_FLAG_DIRECTORY : 0);
+            if (!success)
             {
                 try
                 {
@@ -139,11 +112,11 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         public static string GetLinkTarget(string path)
         {
-            VersionManager.ThrowIfNotWindowsPlatform();
-            SymbolicLinkReparseData? reparseData = GetReparseData(path);
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
             if (reparseData is null) return null;
             var reparseDataBuffer = reparseData.Value;
-            if (reparseDataBuffer.ReparseTag != symLinkTag)
+            if (reparseDataBuffer.ReparseTag != Win32.PInvoke.IO_REPARSE_TAG_SYMLINK)
             {
                 return null;
             }
@@ -157,12 +130,12 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// <returns></returns>
         public static string GetJunctionTarget(string path)
         {
-            VersionManager.ThrowIfNotWindowsPlatform();
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
             if (!Directory.Exists(path)) return null;
-            SymbolicLinkReparseData? reparseData = GetReparseData(path);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
             if (reparseData is null) return null;
             var reparseDataBuffer = reparseData.Value;
-            if (reparseDataBuffer.ReparseTag != junctionPointTag)
+            if (reparseDataBuffer.ReparseTag != Win32.PInvoke.IO_REPARSE_TAG_MOUNT_POINT)
             {
                 return null;
             }
@@ -176,10 +149,10 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         public static bool IsJunctionOrSymbolic(string path)
         {
-            VersionManager.ThrowIfNotWindowsPlatform();
-            SymbolicLinkReparseData? reparseData = GetReparseData(path);
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
             if (reparseData is null) return false;
-            SymbolicLinkReparseData data = reparseData.Value;
+            REPARSE_DATA_BUFFER data = reparseData.Value;
             if (data.ReparseTag == symLinkTag | data.ReparseTag == junctionPointTag)
             {
                 return GetTargetFromReparseData(data, path) != null;
@@ -190,75 +163,88 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
         }
 
-        private static string GetTargetFromReparseData(SymbolicLinkReparseData reparseDataBuffer, string inputPath)
+        private static string GetTargetFromReparseData(REPARSE_DATA_BUFFER reparseDataBuffer, string inputPath)
         {
-            string target = Encoding.Unicode.GetString(reparseDataBuffer.PathBuffer,
-                reparseDataBuffer.PrintNameOffset, reparseDataBuffer.PrintNameLength);
-
-            if ((reparseDataBuffer.Flags & symlinkReparsePointFlagRelative) == symlinkReparsePointFlagRelative)
+            // ToDo : Convert to AsSpan
+            string target;
+            if (reparseDataBuffer.ReparseTag.UintHasFlag(Win32.PInvoke.IO_REPARSE_TAG_SYMLINK))
             {
-                string basePath = Path.GetDirectoryName(inputPath.TrimEnd(Path.DirectorySeparatorChar));
-                string combinedPath = Path.Combine(basePath, target);
-                target = Path.GetFullPath(combinedPath);
+                target = reparseDataBuffer.Anonymous.SymbolicLinkReparseBuffer.PathBuffer.ToString();
+            }
+            else if (reparseDataBuffer.ReparseTag.UintHasFlag(Win32.PInvoke.IO_REPARSE_TAG_MOUNT_POINT))
+            {
+                target = reparseDataBuffer.Anonymous.MountPointReparseBuffer.PathBuffer.ToString();
+            }
+            else
+            {
+                return null;
             }
 
+            // Handle Relative paths
+            if ((reparseDataBuffer.ReparseTag & Win32.PInvoke.IO_REPARSE_TAG_SYMLINK) == symlinkReparsePointFlagRelative)
+            {
+                string basePath = Path.GetDirectoryName(inputPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                target = Path.Combine(basePath, target);
+            }
             return target;
         }
 
-        private static SafeFileHandle GetFileHandle(string path)
+        private static bool UintHasFlag(this uint value, uint expectedValue)
         {
-            return CreateFile(path, genericReadAccess, shareModeAll, IntPtr.Zero, openExisting,
-                fileFlagsForOpenReparsePointAndBackupSemantics, IntPtr.Zero);
+            return value == expectedValue || expectedValue == (value & expectedValue);
         }
 
-        private static SymbolicLinkReparseData? GetReparseData(string path)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "Throws if not windows platform")]
+        private unsafe static REPARSE_DATA_BUFFER? GetReparseData(string path)
         {
-            SymbolicLinkReparseData reparseDataBuffer;
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+            using SafeFileHandle fileHandle = Win32.PInvoke.CreateFile(
+                    lpFileName: path,
+                    dwDesiredAccess: (uint)Win32.Foundation.GENERIC_ACCESS_RIGHTS.GENERIC_READ,
+                    dwShareMode: Win32.Storage.FileSystem.FILE_SHARE_MODE.FILE_SHARE_READ | Win32.Storage.FileSystem.FILE_SHARE_MODE.FILE_SHARE_WRITE,
+                    lpSecurityAttributes: default,
+                    dwCreationDisposition: Win32.Storage.FileSystem.FILE_CREATION_DISPOSITION.OPEN_EXISTING,
+                    dwFlagsAndAttributes: Win32.Storage.FileSystem.FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT,
+                    hTemplateFile: default);
 
-            using (SafeFileHandle fileHandle = GetFileHandle(path))
+            if (fileHandle.IsInvalid)
             {
-                if (fileHandle.IsInvalid)
+                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+            }
+            int outBufferSize = Marshal.SizeOf<REPARSE_DATA_BUFFER>();
+            IntPtr outputBuffer = Marshal.AllocHGlobal(outBufferSize);
+            uint* bytesReturned = default;
+            try
+            {
+
+                // https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-deviceiocontrol
+                // https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_reparse_point
+                bool success = Win32.PInvoke.DeviceIoControl(fileHandle, Win32.PInvoke.FSCTL_GET_REPARSE_POINT, null, 0U,
+                    lpOutBuffer: outputBuffer.ToPointer(),
+                    nOutBufferSize: (uint)outBufferSize,
+                    lpBytesReturned: bytesReturned,
+                    lpOverlapped: null
+                    );
+
+                if (!success)
                 {
+                    if (((uint)Marshal.GetHRForLastWin32Error()) == pathNotAReparsePointError)
+                    {
+                        return null;
+                    }
                     Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
                 }
-#if NETFRAMEWORK
-                int outBufferSize = Marshal.SizeOf(typeof(SymbolicLinkReparseData));
-#else
-                int outBufferSize = Marshal.SizeOf<SymbolicLinkReparseData>();
-#endif
-                IntPtr outBuffer = IntPtr.Zero;
-                try
-                {
-                    outBuffer = Marshal.AllocHGlobal(outBufferSize);
-                    bool success = DeviceIoControl(
-                        fileHandle.DangerousGetHandle(), ioctlCommandGetReparsePoint, IntPtr.Zero, 0,
-                        outBuffer, outBufferSize, out int bytesReturned, IntPtr.Zero);
-
-                    fileHandle.Dispose();
-
-                    if (!success)
-                    {
-                        if (((uint)Marshal.GetHRForLastWin32Error()) == pathNotAReparsePointError)
-                        {
-                            return null;
-                        }
-                        Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
-                    }
 
 #if NETFRAMEWORK
-                    reparseDataBuffer = (SymbolicLinkReparseData)Marshal.PtrToStructure(
-                        outBuffer, typeof(SymbolicLinkReparseData));
+                return (REPARSE_DATA_BUFFER)Marshal.PtrToStructure(outputBuffer, typeof(REPARSE_DATA_BUFFER));
 #else
-                    reparseDataBuffer = Marshal.PtrToStructure<SymbolicLinkReparseData>(outBuffer);
+                return Marshal.PtrToStructure<REPARSE_DATA_BUFFER>(outputBuffer);
 #endif
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(outBuffer);
-                }
             }
-
-            return reparseDataBuffer;
+            finally
+            {
+                Marshal.FreeHGlobal(outputBuffer);
+            }
         }
     }
 }
