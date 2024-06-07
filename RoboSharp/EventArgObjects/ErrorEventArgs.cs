@@ -47,17 +47,17 @@ namespace RoboSharp
         }
 
         /// <summary>
-        /// Error Code
+        /// The error message
         /// </summary>
         public string Error { get; }
 
         /// <summary>
-        /// Error Description
+        /// Error Description or stack trace
         /// </summary>
         public string ErrorDescription { get; }
         
         /// <summary>
-        /// Error Code
+        /// The error code
         /// </summary>
         public int ErrorCode { get; }
 
