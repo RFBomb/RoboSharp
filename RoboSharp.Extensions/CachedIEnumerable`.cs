@@ -26,7 +26,7 @@ namespace RoboSharp.Extensions
         /// <summary>
         /// Gets an Empty Array
         /// </summary>
-        public static CachedEnumerable<T> Empty { get; }
+        public static readonly CachedEnumerable<T> Empty;
         
         /// <summary>
         /// Create a new Cached IEnumerable
@@ -38,17 +38,19 @@ namespace RoboSharp.Extensions
             _cache = new List<T>();
         }
 
-        internal CachedEnumerable(T[] enumerable) 
+        ///<inheritdoc cref="CachedEnumerable{T}.CachedEnumerable(IEnumerable{T})"/>
+        public CachedEnumerable(T[] enumerable) 
         {
             if (enumerable is null) throw new ArgumentNullException(nameof(enumerable));
             this._cache = enumerable.ToList();
             this._enumerated = true;
         }
 
-        internal CachedEnumerable(List<T> enumerable) 
+        ///<inheritdoc cref="CachedEnumerable{T}.CachedEnumerable(IEnumerable{T})"/>
+        public CachedEnumerable(List<T> enumerable) 
         {
             if (enumerable is null) throw new ArgumentNullException(nameof(enumerable));
-            this._cache = enumerable.ToList();
+            this._cache = enumerable;
             this._enumerated = true;
         }
 
