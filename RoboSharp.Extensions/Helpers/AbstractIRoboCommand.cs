@@ -8,7 +8,7 @@ using RoboSharp.Results;
 using RoboSharp.EventArgObjects;
 using System.ComponentModel;
 
-namespace RoboSharp.Extensions
+namespace RoboSharp.Extensions.Helpers
 {
     /// <summary>
     /// Abstract Base class available for consumers to use for custom IRoboCommands
@@ -23,29 +23,29 @@ namespace RoboSharp.Extensions
         /// </summary>
         protected AbstractIRoboCommand()
         {
-            this.CopyOptions = new CopyOptions();
-            this.LoggingOptions = new LoggingOptions();
-            this.RetryOptions = new RetryOptions();
-            this.SelectionOptions = new SelectionOptions();
-            this.Configuration = new RoboSharpConfiguration();
+            CopyOptions = new CopyOptions();
+            LoggingOptions = new LoggingOptions();
+            RetryOptions = new RetryOptions();
+            SelectionOptions = new SelectionOptions();
+            Configuration = new RoboSharpConfiguration();
         }
 
         /// <summary>
         /// Instantiate all the robosharp options except JobOptions, then apply the provided parameters
         /// </summary>
-        /// <inheritdoc cref="RoboCommand.RoboCommand(string, string, CopyActionFlags, SelectionFlags, LoggingFlags)"/>
+        /// <inheritdoc cref="RoboCommand(string, string, CopyActionFlags, SelectionFlags, LoggingFlags)"/>
         protected AbstractIRoboCommand(
-            string source, 
-            string destination, 
-            CopyActionFlags copyActionFlags = CopyActionFlags.Default, 
+            string source,
+            string destination,
+            CopyActionFlags copyActionFlags = CopyActionFlags.Default,
             SelectionFlags selectionFlags = SelectionFlags.Default,
             LoggingFlags loggingFlags = LoggingFlags.RoboSharpDefault)
         {
-            this.CopyOptions = new CopyOptions(source ?? string.Empty, destination ?? string.Empty, copyActionFlags);
-            this.LoggingOptions = new LoggingOptions(loggingFlags);
-            this.RetryOptions = new RetryOptions();
-            this.SelectionOptions = new SelectionOptions(selectionFlags);
-            this.Configuration = new RoboSharpConfiguration();
+            CopyOptions = new CopyOptions(source ?? string.Empty, destination ?? string.Empty, copyActionFlags);
+            LoggingOptions = new LoggingOptions(loggingFlags);
+            RetryOptions = new RetryOptions();
+            SelectionOptions = new SelectionOptions(selectionFlags);
+            Configuration = new RoboSharpConfiguration();
         }
 
         /// <summary>
@@ -54,11 +54,11 @@ namespace RoboSharp.Extensions
         /// </summary>
         protected AbstractIRoboCommand(CopyOptions copyOptions = null, LoggingOptions loggingOptions = null, RetryOptions retryOptions = null, SelectionOptions selectionOptions = null, RoboSharpConfiguration configuration = null)
         {
-            this.CopyOptions = copyOptions ?? new CopyOptions();
-            this.LoggingOptions = loggingOptions ?? new LoggingOptions();
-            this.RetryOptions = retryOptions ?? new RetryOptions();
-            this.SelectionOptions = selectionOptions ?? new SelectionOptions();
-            this.Configuration = configuration ?? new RoboSharpConfiguration();
+            CopyOptions = copyOptions ?? new CopyOptions();
+            LoggingOptions = loggingOptions ?? new LoggingOptions();
+            RetryOptions = retryOptions ?? new RetryOptions();
+            SelectionOptions = selectionOptions ?? new SelectionOptions();
+            Configuration = configuration ?? new RoboSharpConfiguration();
         }
 
         /// <summary>
@@ -176,7 +176,7 @@ namespace RoboSharp.Extensions
 
 
         /// <inheritdoc/>
-        public virtual JobOptions JobOptions => throw new NotImplementedException(string.Format("IRoboCommand of type '{0}' does not implement JobOptions",this.GetType().ToString()));
+        public virtual JobOptions JobOptions => throw new NotImplementedException(string.Format("IRoboCommand of type '{0}' does not implement JobOptions", GetType().ToString()));
 
         /// <inheritdoc/>
         public RoboSharpConfiguration Configuration
@@ -215,7 +215,7 @@ namespace RoboSharp.Extensions
         }
 
         #endregion
-        
+
         #region < OnCommandError >
 
         /// <inheritdoc/>
@@ -244,7 +244,7 @@ namespace RoboSharp.Extensions
         }
 
         #endregion
-        
+
         #region < OnError >
 
         /// <inheritdoc/>
@@ -297,7 +297,7 @@ namespace RoboSharp.Extensions
         }
 
         /// <summary> Raises the OnCopyProgressChanged event </summary>
-        /// <inheritdoc cref="CopyProgressEventArgs.CopyProgressEventArgs(double, ProcessedFileInfo, ProcessedFileInfo)"/>
+        /// <inheritdoc cref="CopyProgressEventArgs(double, ProcessedFileInfo, ProcessedFileInfo)"/>
         /// <remarks><inheritdoc cref="OnCopyProgressChanged"  path="*"/></remarks>
         protected virtual void RaiseOnCopyProgressChanged(double progress, ProcessedFileInfo currentFile, ProcessedFileInfo dirInfo = null)
         {
@@ -307,7 +307,7 @@ namespace RoboSharp.Extensions
         #endregion
 
         #region < OnProgressEstimatorCreated >
-        
+
         /// <inheritdoc/>
         public event RoboCommand.ProgressUpdaterCreatedHandler OnProgressEstimatorCreated;
 
@@ -342,7 +342,7 @@ namespace RoboSharp.Extensions
         }
 
         /// <summary> Raises the TaskFaulted event </summary>
-        /// <inheritdoc cref="UnhandledExceptionEventArgs.UnhandledExceptionEventArgs(object, bool)" path="*"/>
+        /// <inheritdoc cref="UnhandledExceptionEventArgs(object, bool)" path="*"/>
         /// <remarks><inheritdoc cref="TaskFaulted"  path="*"/></remarks>
         protected virtual void RaiseOnTaskFaulted(Exception exception, bool isTerminating = false)
         {
@@ -411,7 +411,7 @@ namespace RoboSharp.Extensions
         {
             return ListOnlyResults;
         }
-        
+
         /// <summary>
         /// Save the results object to either <see cref="ListOnlyResults"/> or <see cref="RunResults"/> based on <see cref="LoggingOptions.ListOnly"/>
         /// <br/> If <see cref="RunResults"/> is null while saving to <see cref="ListOnlyResults"/>, RunResults will be updated as well.
@@ -467,7 +467,7 @@ namespace RoboSharp.Extensions
             bool original = LoggingOptions.ListOnly;
             LoggingOptions.ListOnly = true;
             await Start(domain, username, password);
-            this.LoggingOptions.ListOnly = original;
+            LoggingOptions.ListOnly = original;
         }
 
         /// <inheritdoc/>

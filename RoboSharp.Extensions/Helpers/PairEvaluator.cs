@@ -1,5 +1,4 @@
-﻿using RoboSharp;
-using RoboSharp.Interfaces;
+﻿using RoboSharp.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,9 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Comparers;
+using RoboSharp.Extensions.Options;
 
-namespace RoboSharp.Extensions
+namespace RoboSharp.Extensions.Helpers
 {
     /// <summary>
     /// Class that can be instantiated to cache the various values that get checked against when deciding to copy a file or folder.
@@ -25,11 +25,11 @@ namespace RoboSharp.Extensions
         {
             Command = command ?? throw new ArgumentNullException(nameof(command));
             FileSorter = new FilePairSorter<IProcessedFilePair>(command.Configuration);
-            FileAttributesToApplyField = new Lazy<FileAttributes?>(this.Command.CopyOptions.GetAddAttributes);
-            FileAttributesToRemoveField = new Lazy<FileAttributes?>(this.Command.CopyOptions.GetRemoveAttributes);
-            FileFilterRegexField = new Lazy<Regex[]>(this.Command.CopyOptions.GetFileFilterRegex);
-            ExcludeFileNameRegexField = new Lazy<Regex[]>(this.Command.SelectionOptions.GetExcludedFileRegex);
-            ExcludeDirectoryRegexField = new Lazy<Helpers.DirectoryRegex[]>(this.Command.SelectionOptions.GetExcludedDirectoryRegex);
+            FileAttributesToApplyField = new Lazy<FileAttributes?>(Command.CopyOptions.GetAddAttributes);
+            FileAttributesToRemoveField = new Lazy<FileAttributes?>(Command.CopyOptions.GetRemoveAttributes);
+            FileFilterRegexField = new Lazy<Regex[]>(Command.CopyOptions.GetFileFilterRegex);
+            ExcludeFileNameRegexField = new Lazy<Regex[]>(Command.SelectionOptions.GetExcludedFileRegex);
+            ExcludeDirectoryRegexField = new Lazy<DirectoryRegex[]>(Command.SelectionOptions.GetExcludedDirectoryRegex);
         }
 
         #region < Properties >
@@ -38,7 +38,7 @@ namespace RoboSharp.Extensions
         private readonly Lazy<FileAttributes?> FileAttributesToRemoveField;
         private readonly Lazy<Regex[]> FileFilterRegexField;
         private readonly Lazy<Regex[]> ExcludeFileNameRegexField;
-        private readonly Lazy<Helpers.DirectoryRegex[]> ExcludeDirectoryRegexField;
+        private readonly Lazy<DirectoryRegex[]> ExcludeDirectoryRegexField;
         private readonly FilePairSorter<IProcessedFilePair> FileSorter;
 
         /// <summary>
@@ -47,31 +47,31 @@ namespace RoboSharp.Extensions
         public IRoboCommand Command { get; }
 
         /// <summary>
-        /// Regex objects used by <see cref="PairEvaluator.ShouldCopyFile"/> - Generated via <see cref="CopyOptions.FileFilter"/>
+        /// Regex objects used by <see cref="ShouldCopyFile"/> - Generated via <see cref="CopyOptions.FileFilter"/>
         /// </summary>
         public IEnumerable<Regex> FileFilterRegex => FileFilterRegexField.Value;
 
         /// <summary>
-        /// Regex objects used by <see cref="PairEvaluator.ShouldCopyFile"/> - Generated via <see cref="SelectionOptions.ExcludedFiles"/>
+        /// Regex objects used by <see cref="ShouldCopyFile"/> - Generated via <see cref="SelectionOptions.ExcludedFiles"/>
         /// </summary>
         public IEnumerable<Regex> ExcludedFileNamesRegex => ExcludeFileNameRegexField.Value;
 
         /// <summary>
-        /// Regex objects used by <see cref="PairEvaluator.ShouldCopyFile"/> - Generated via <see cref="SelectionOptions.ExcludedDirectories"/>
+        /// Regex objects used by <see cref="ShouldCopyFile"/> - Generated via <see cref="SelectionOptions.ExcludedDirectories"/>
         /// </summary>
-        public IEnumerable<Helpers.DirectoryRegex> ExcludedDirectoriesRegex => ExcludeDirectoryRegexField.Value;
+        public IEnumerable<DirectoryRegex> ExcludedDirectoriesRegex => ExcludeDirectoryRegexField.Value;
 
         /// <summary>
         /// File Attributes to add - Gathered from <see cref="CopyOptions.AddAttributes"/>
         /// </summary>
         public FileAttributes? FileAttributesToApply => FileAttributesToApplyField.Value;
-        
+
 
         /// <summary>
         /// File Attributes to remove - Gathered from <see cref="CopyOptions.RemoveAttributes"/>
         /// </summary>
         public FileAttributes? FileAttributesToRemove => FileAttributesToRemoveField.Value;
-        
+
 
         #endregion
 
@@ -83,7 +83,7 @@ namespace RoboSharp.Extensions
         public bool CanDigDeeper(int currentDepth)
         {
             if (!Command.CopyOptions.IsRecursive()) return false;
-            return !CopyOptionsExtensions.ExceedsAllowedDepth(Command.CopyOptions, currentDepth + 1);
+            return !Command.CopyOptions.ExceedsAllowedDepth(currentDepth + 1);
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace RoboSharp.Extensions
         public bool CanProcessExtraDirs(int currentDepth)
         {
             bool evalExtra = Command.CopyOptions.Purge | Command.LoggingOptions.ReportExtraFiles;
-            if (currentDepth == 1) return Command.CopyOptions.Depth != 1 && (evalExtra | !CopyOptionsExtensions.ExceedsAllowedDepth(Command.CopyOptions, currentDepth + 1));
+            if (currentDepth == 1) return Command.CopyOptions.Depth != 1 && evalExtra | !Command.CopyOptions.ExceedsAllowedDepth(currentDepth + 1);
             if (evalExtra) return true;
             return CanDigDeeper(currentDepth);
         }
@@ -128,7 +128,7 @@ namespace RoboSharp.Extensions
         {
             ExcludeDirectoryName = ShouldExcludeDirectoryName(pair);
             ExcludeJunctionDirectory = ShouldExcludeJunctionDirectory(pair);
-            
+
             bool shouldExclude = ExcludeJunctionDirectory | ExcludeDirectoryName;
             if (!shouldExclude && pair.Source.Exists && pair.Destination.Exists)
             {
@@ -157,10 +157,10 @@ namespace RoboSharp.Extensions
         /// <inheritdoc cref="ShouldCopyDir(IProcessedDirectoryPair , out ProcessedDirectoryFlag, out bool, out bool)"/>
         public bool ShouldCopyDir(IProcessedDirectoryPair pair) => ShouldCopyDir(pair, out _, out _, out _);
 
-        /// <inheritdoc cref="SelectionOptionsExtensions.ShouldExcludeJunctionDirectory(SelectionOptions, IDirectoryPair)"/>
+        /// <inheritdoc cref="SelectionExtensions.ShouldExcludeJunctionDirectory(SelectionOptions, IDirectoryPair)"/>
         public bool ShouldExcludeJunctionDirectory(IDirectoryPair pair) => Command.SelectionOptions.ShouldExcludeJunctionDirectory(pair.Source);
 
-        /// <inheritdoc cref="SelectionOptionsExtensions.ShouldExcludeDirectoryName(SelectionOptions, IDirectoryPair, IEnumerable{DirectoryRegex})"/>
+        /// <inheritdoc cref="SelectionExtensions.ShouldExcludeDirectoryName(SelectionOptions, IDirectoryPair, IEnumerable{DirectoryRegex})"/>
         public bool ShouldExcludeDirectoryName(IDirectoryPair pair) => Command.SelectionOptions.ShouldExcludeDirectoryName(pair.Source.FullName, ExcludedDirectoriesRegex);
 
         #endregion
@@ -168,11 +168,15 @@ namespace RoboSharp.Extensions
         #region < ShouldCopyFile >
 
         /// <summary>
-        /// Evaluate RoboCopy Options of the command, the source, and destination and compute a ProcessedFileInfo object, which is then assigned to the <paramref name="pair"/> <br/>
-        /// Ignores <see cref="LoggingOptions.ListOnly"/>
+        /// Evaluate RoboCopy Options of the command, the source, and destination and compute a ProcessedFileInfo object
+        /// <br/> - Ignores <see cref="LoggingOptions.ListOnly"/>
+        /// <br/> - The generated <see cref="ProcessedFileInfo"/> object will be applied to the <see cref="IProcessedFilePair.ProcessedFileInfo"/> property.
+        /// <br/> - The <see cref="bool"/> result is not automatically applied to the <see cref="IProcessedFilePair.ShouldCopy"/> or <see cref="IProcessedFilePair.ShouldPurge"/> properties!
         /// </summary>
         /// <param name="pair">the pair of Source/Destination to compare</param>
-        /// <returns>TRUE if the file should be copied/moved, FALSE if the file should be skiped</returns>
+        /// <returns>
+        /// TRUE if the file should be copied/moved, FALSE if the file should be skiped
+        /// </returns>
         /// <remarks>
         /// Note: Does not evaluate the FileName inclusions from CopyOptions, since RoboCopy appears to use those to filter prior to performing these evaluations. <br/>
         /// Use <see cref="FilterAndSortSourceFiles{T}(IEnumerable{T})"/> as a pre-filter for this.
@@ -182,8 +186,8 @@ namespace RoboSharp.Extensions
             bool SourceExists = pair.Source.Exists;
             bool DestExists = pair.Destination.Exists;
             string Name = Command.LoggingOptions.IncludeFullPathNames ?
-                (DestExists & !SourceExists ? pair.Destination.FullName : pair.Source.FullName) :
-                (DestExists & !SourceExists ? pair.Destination.Name : pair.Source.Name);
+                DestExists & !SourceExists ? pair.Destination.FullName : pair.Source.FullName :
+                DestExists & !SourceExists ? pair.Destination.Name : pair.Source.Name;
             pair.ProcessedFileInfo = new ProcessedFileInfo()
             {
                 FileClassType = FileClassType.File,
@@ -298,7 +302,7 @@ namespace RoboSharp.Extensions
         {
             List<T> coll;
             if (Command.CopyOptions.HasDefaultFileFilter())
-                coll = collection.ToList(); 
+                coll = collection.ToList();
             else
                 coll = collection.Where(ShouldIncludeFileName).ToList();
 
@@ -311,7 +315,7 @@ namespace RoboSharp.Extensions
 
 
         /// <inheritdoc cref="CopyOptionsExtensions.ShouldIncludeFileName(CopyOptions, IFilePair, IEnumerable{Regex})"/>
-        public bool ShouldIncludeFileName<T>(T pair) where T:IFilePair
+        public bool ShouldIncludeFileName<T>(T pair) where T : IFilePair
         {
             return Command.CopyOptions.ShouldIncludeFileName(pair, FileFilterRegex);
         }
@@ -335,7 +339,7 @@ namespace RoboSharp.Extensions
         /// <inheritdoc cref="CopyOptionsExtensions.ShouldPurge(IRoboCommand, IProcessedFilePair)"/>
         public bool ShouldPurge(IProcessedFilePair pair)
         {
-            return  Command.ShouldPurge(pair);
+            return Command.ShouldPurge(pair);
         }
 
         /// <inheritdoc cref="CopyOptionsExtensions.ShouldPurge(IRoboCommand, IDirectoryPair)"/>

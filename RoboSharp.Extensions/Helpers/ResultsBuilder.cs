@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using RoboSharp;
-using RoboSharp.Extensions;
 using RoboSharp.Interfaces;
 using RoboSharp.Results;
 using RoboSharp.EventArgObjects;
 using static RoboSharp.Results.ProgressEstimator;
-using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Options;
 
-namespace RoboSharp.Extensions
+namespace RoboSharp.Extensions.Helpers
 {
     /// <summary>
     /// ResultsBuilder object for custom IRoboCommand implementations
@@ -20,7 +18,7 @@ namespace RoboSharp.Extensions
     {
         #region < Constructor >
 
-        /// <inheritdoc cref="ResultsBuilder.ResultsBuilder(IRoboCommand, ProgressEstimator, DateTime?)"/>
+        /// <inheritdoc cref="ResultsBuilder(IRoboCommand, ProgressEstimator, DateTime?)"/>
         public ResultsBuilder(IRoboCommand cmd) : this(cmd, new ProgressEstimator(cmd), DateTime.Now) { }
 
         /// <summary>
@@ -39,8 +37,9 @@ namespace RoboSharp.Extensions
         }
 
         #endregion
+
         private bool _isLoggingHeaderOrSummary;
-        
+        private RoboCopyExitStatus _exitStatus;
 
         #region < Properties >
 
@@ -48,7 +47,7 @@ namespace RoboSharp.Extensions
         /// The associated <see cref="IRoboCommand"/> object
         /// </summary>
         protected IRoboCommand Command { get; }
-        
+
         /// <summary>
         /// The private collection of log lines
         /// </summary>
@@ -107,7 +106,7 @@ namespace RoboSharp.Extensions
 
         ISpeedStatistic IResultsBuilder.SpeedStatistic => AverageSpeed;
 
-        RoboCopyExitStatus IResultsBuilder.ExitStatus => new RoboCopyExitStatus(ProgressEstimator.GetExitCode());
+        RoboCopyExitStatus IResultsBuilder.ExitStatus => _exitStatus ?? new RoboCopyExitStatus(ProgressEstimator.GetExitCode());
 
         IEnumerable<ErrorEventArgs> IResultsBuilder.CommandErrors => CommandErrors;
 
@@ -121,6 +120,7 @@ namespace RoboSharp.Extensions
         /// <summary>
         /// Unsubscribe from the associated IRoboCommand
         /// </summary>
+        /// <remarks>Performed automatically when calling <see cref="Dispose"/></remarks>
         public void Unsubscribe()
         {
             Command.OnError -= Command_OnError;
@@ -131,13 +131,28 @@ namespace RoboSharp.Extensions
             CommandErrors.Add(e);
         }
 
+        /// <summary>
+        /// Explicitly set the ExitStatus to report as part of the results
+        /// </summary>
+        public void SetExitStatus(RoboCopyExitStatus status)
+        {
+            _exitStatus = status;
+        }
+
+        /// <summary>
+        /// Explicitly set the ExitStatus to report as part of the results
+        /// </summary>
+        public void SetExitStatus(RoboCopyExitCodes status)
+        {
+            _exitStatus = new RoboCopyExitStatus(status);
+        }
+
         #region < Add Files >
 
         /// <inheritdoc cref="ProgressEstimator.AddFile(ProcessedFileInfo)"/>
         public virtual void AddFile(ProcessedFileInfo file)
         {
             ProgressEstimator.AddFile(file);
-            //if (Command.LoggingOptions.ListOnly) 
             LogFileInfo(file);
         }
 
@@ -265,13 +280,21 @@ namespace RoboSharp.Extensions
         /// Adds a System Message to the logs
         /// </summary>
         /// <param name="info"></param>
-        public virtual void AddSystemMessage(ProcessedFileInfo info) => WriteToLogs(info.FileClass);
+        public virtual void AddSystemMessage(ProcessedFileInfo info) => AddSystemMessage(info?.FileClass);
 
         /// <summary>
         /// Adds a System Message to the logs
         /// </summary>
         /// <param name="info"></param>
-        public virtual void AddSystemMessage(string info) => WriteToLogs(info);
+        public virtual void AddSystemMessage(string info)
+        {
+            if (string.IsNullOrWhiteSpace(info)) return;
+            lock (LogLines)
+            {
+                LogLines.Add(info);
+                Command.LoggingOptions.AppendToLogs(info);
+            }
+        }
 
         #endregion
 
@@ -300,7 +323,7 @@ namespace RoboSharp.Extensions
                 _isLoggingHeaderOrSummary = true;
                 WriteToLogs(Divider);
                 WriteToLogs("\t   IRoboCommand : '{0}'".Format(Command.GetType()));
-                WriteToLogs("\tResults Builder : '{0}'".Format(this.GetType()));
+                WriteToLogs("\tResults Builder : '{0}'".Format(GetType()));
                 WriteToLogs(Divider);
                 WriteToLogs("");
                 WriteToLogs($"{PadHeader("Started")} : {StartTime.ToLongDateString()} {StartTime.ToLongTimeString()}");
@@ -308,20 +331,20 @@ namespace RoboSharp.Extensions
                 WriteToLogs($"{PadHeader("Dest")} : {Command.CopyOptions.Destination}");
                 WriteToLogs("");
                 if (Command.CopyOptions.FileFilter.Any())
-                    WriteToLogs($"{PadHeader("Files")} : {String.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
+                    WriteToLogs($"{PadHeader("Files")} : {string.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
                 else
                     WriteToLogs($"{PadHeader("Files")} : *.*");
                 WriteToLogs("");
-                
+
                 if (Command.SelectionOptions.ExcludedFiles.Any())
                 {
-                    WriteToLogs($"{PadHeader("Exc Files")} : {String.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
+                    WriteToLogs($"{PadHeader("Exc Files")} : {string.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
                     WriteToLogs("");
                 }
 
                 if (Command.SelectionOptions.ExcludedDirectories.Any())
                 {
-                    WriteToLogs($"{PadHeader("Exc Dirs")} : {String.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
+                    WriteToLogs($"{PadHeader("Exc Dirs")} : {string.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
                     WriteToLogs("");
                 }
 
@@ -329,7 +352,7 @@ namespace RoboSharp.Extensions
                 string parsedSelectionOptions = Command.SelectionOptions.Parse(true);
                 string parsedRetryOptions = Command.RetryOptions.ToString();
                 string parsedLoggingOptions = Command.LoggingOptions.ToString();
-                string cmdOptions  = string.Format("{0}{1}{2}{3}", parsedCopyOptions, parsedSelectionOptions, parsedRetryOptions, parsedLoggingOptions);
+                string cmdOptions = string.Format("{0}{1}{2}{3}", parsedCopyOptions, parsedSelectionOptions, parsedRetryOptions, parsedLoggingOptions);
 
                 WriteToLogs($"{PadHeader("Options")} : {cmdOptions}");
                 WriteToLogs("");
@@ -344,6 +367,8 @@ namespace RoboSharp.Extensions
         /// </summary>
         protected virtual void CreateSummary()
         {
+            if (Command.LoggingOptions.NoJobSummary) return;
+
             int[] GetColumnSizes()
             {
                 var sizes = new List<int>();
@@ -394,7 +419,7 @@ namespace RoboSharp.Extensions
                 {
                     WriteToLogs("");
                     WriteToLogs($"\tSpeed: {AverageSpeed.GetBytesPerSecond()}");
-                    WriteToLogs($"\tSpeed: { AverageSpeed.GetMegaBytesPerMin()}");
+                    WriteToLogs($"\tSpeed: {AverageSpeed.GetMegaBytesPerMin()}");
                 }
                 WriteToLogs("");
                 WriteToLogs(Divider);
@@ -428,6 +453,7 @@ namespace RoboSharp.Extensions
         /// </summary>
         public virtual RoboCopyResults GetResults()
         {
+            ProgressEstimator.FinalizeResults();
             CreateSummary();
             Unsubscribe();
             return RoboCopyResults.FromResultsBuilder(this);
