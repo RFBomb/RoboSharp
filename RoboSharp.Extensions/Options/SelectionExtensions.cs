@@ -1,24 +1,21 @@
-﻿using RoboSharp.Interfaces;
-using RoboSharp.Extensions.SymbolicLinkSupport;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.SymbolicLinkSupport;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Options
 {
     /// <summary>
-    /// Extension Methods for selections options to assist with custom implementations
+    /// Extension Methods for <see cref="RoboSharp.SelectionOptions"/> to assist with custom implementations
     /// </summary>
-    public static partial class SelectionOptionsExtensions
+    public static partial class SelectionExtensions
     {
-        internal static string Format(this string input, params object[] args) => String.Format(input, args);
-        internal static string PadCenter(this string paddedString, string otherString) => PadCenter(paddedString, otherString.Length);
-        internal static string PadCenter(this string paddedString, int length) 
+        internal static string Format(this string input, params object[] args) => string.Format(input, args);
+        internal static string PadCenter(this string paddedString, string otherString) => paddedString.PadCenter(otherString.Length);
+        internal static string PadCenter(this string paddedString, int length)
         {
             if (paddedString.Length >= length) return paddedString;
             int i = length - paddedString.Length;
@@ -35,14 +32,14 @@ namespace RoboSharp.Extensions.Helpers
         /// ? = any single character
         /// </param>
         /// <returns>Translated the wildcard pattern to a regex pattern</returns>
-        public static Regex CreateWildCardRegex(string pattern)
+        public static Regex CreateWildCardRegex(this string pattern)
         {
             if (string.IsNullOrWhiteSpace(pattern)) throw new ArgumentException("pattern is null or empty!");
             string sanitized = pattern.Replace(@"\", @"\\").Replace("/", @"\\");
             sanitized = sanitized.Replace(".", @"\.");
             sanitized = sanitized.Replace("*", ".*");
             sanitized = sanitized.Replace("?", ".");
-            return new Regex($"^{sanitized}$", options: RegexOptions.IgnoreCase);
+            return new Regex($"^{sanitized}$", options: RegexOptions.IgnoreCase | RegexOptions.Compiled);
         }
 
         #region < Should Exclude Newer >
@@ -50,7 +47,7 @@ namespace RoboSharp.Extensions.Helpers
         /// <summary> </summary>
         /// <returns> TRUE if the file should be excluded, FALSE if it should be included </returns>
         public static bool ShouldExcludeOlder(this SelectionOptions options, string source, string destination) => options.ExcludeOlder && IFilePairExtensions.IsDestinationNewer(source, destination);
-        
+
         /// <inheritdoc cref="ShouldExcludeOlder(SelectionOptions, string, string)"/>
         public static bool ShouldExcludeOlder(this SelectionOptions options, FileInfo source, FileInfo destination) => options.ExcludeOlder && IFilePairExtensions.IsDestinationNewer(source, destination);
 
@@ -64,10 +61,10 @@ namespace RoboSharp.Extensions.Helpers
         /// <summary> </summary>
         /// <returns> TRUE if the file should be excluded, FALSE if it should be included </returns>
         public static bool ShouldExcludeNewer(this SelectionOptions options, string source, string destination) => options.ExcludeNewer && IFilePairExtensions.IsSourceNewer(source, destination);
-        
+
         /// <inheritdoc cref="ShouldExcludeNewer(SelectionOptions, string, string)"/>
         public static bool ShouldExcludeNewer(this SelectionOptions options, FileInfo source, FileInfo destination) => options.ExcludeNewer && IFilePairExtensions.IsSourceNewer(source, destination);
-        
+
         /// <inheritdoc cref="ShouldExcludeNewer(SelectionOptions, FileInfo, FileInfo)"/>
         public static bool ShouldExcludeNewer(this SelectionOptions options, IFilePair pair) => options.ExcludeNewer && pair.IsSourceNewer();
 
@@ -135,7 +132,7 @@ namespace RoboSharp.Extensions.Helpers
             else
                 return false;
         }
-        
+
         /// <inheritdoc cref="IsLonely(string, string)"/>
         public static bool IsLonely<T>(T Source, T Destination) where T : FileSystemInfo
         {
@@ -175,16 +172,16 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeMaxLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, string source) 
-            => ShouldExcludeMaxLastAccessDate(options, File.GetLastAccessTime(source).Date);
+        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, string source)
+            => options.ShouldExcludeMaxLastAccessDate(File.GetLastAccessTime(source).Date);
 
         /// <inheritdoc cref="ShouldExcludeMaxLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, FileInfo Source) 
-            => ShouldExcludeMaxLastAccessDate(options, Source.LastAccessTime.Date);
+        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, FileInfo Source)
+            => options.ShouldExcludeMaxLastAccessDate(Source.LastAccessTime.Date);
 
         /// <inheritdoc cref="ShouldExcludeMaxLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, IFilePair pair) 
-            => ShouldExcludeMaxLastAccessDate(options, pair.Source.LastAccessTime.Date);
+        public static bool ShouldExcludeMaxLastAccessDate(this SelectionOptions options, IFilePair pair)
+            => options.ShouldExcludeMaxLastAccessDate(pair.Source.LastAccessTime.Date);
 
         #endregion
 
@@ -207,13 +204,13 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeMinLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, string source) => ShouldExcludeMinLastAccessDate(options, File.GetLastAccessTime(source).Date);
+        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, string source) => options.ShouldExcludeMinLastAccessDate(File.GetLastAccessTime(source).Date);
 
         /// <inheritdoc cref="ShouldExcludeMinLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, FileInfo Source) => ShouldExcludeMinLastAccessDate(options, Source.LastAccessTime.Date);
+        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, FileInfo Source) => options.ShouldExcludeMinLastAccessDate(Source.LastAccessTime.Date);
 
         /// <inheritdoc cref="ShouldExcludeMinLastAccessDate(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, IFilePair pair) => ShouldExcludeMinLastAccessDate(options, pair.Source.LastAccessTime.Date);
+        public static bool ShouldExcludeMinLastAccessDate(this SelectionOptions options, IFilePair pair) => options.ShouldExcludeMinLastAccessDate(pair.Source.LastAccessTime.Date);
 
         #endregion
 
@@ -243,14 +240,14 @@ namespace RoboSharp.Extensions.Helpers
         public static bool ShouldExcludeMaxFileAge(this SelectionOptions options, string source)
         {
             if (string.IsNullOrWhiteSpace(options.MaxFileAge)) return false;
-            return ShouldExcludeMaxFileAge(options, File.GetCreationTime(source).Date);
+            return options.ShouldExcludeMaxFileAge(File.GetCreationTime(source).Date);
         }
 
         /// <inheritdoc cref="ShouldExcludeMaxFileAge(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMaxFileAge(this SelectionOptions options, FileInfo Source) => ShouldExcludeMaxFileAge(options, Source.CreationTime.Date);
+        public static bool ShouldExcludeMaxFileAge(this SelectionOptions options, FileInfo Source) => options.ShouldExcludeMaxFileAge(Source.CreationTime.Date);
 
         /// <inheritdoc cref="ShouldExcludeMaxFileAge(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMaxFileAge(this SelectionOptions options, IFilePair pair) => ShouldExcludeMaxFileAge(options, pair.Source.CreationTime.Date);
+        public static bool ShouldExcludeMaxFileAge(this SelectionOptions options, IFilePair pair) => options.ShouldExcludeMaxFileAge(pair.Source.CreationTime.Date);
 
         #endregion
 
@@ -280,16 +277,16 @@ namespace RoboSharp.Extensions.Helpers
         public static bool ShouldExcludeMinFileAge(this SelectionOptions options, string source)
         {
             if (string.IsNullOrWhiteSpace(options.MinFileAge)) return false;
-            return ShouldExcludeMaxFileAge(options, File.GetCreationTime(source).Date);
+            return options.ShouldExcludeMaxFileAge(File.GetCreationTime(source).Date);
         }
 
         /// <inheritdoc cref="ShouldExcludeMinFileAge(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMinFileAge(this SelectionOptions options, FileInfo Source) 
-            => ShouldExcludeMinFileAge(options, Source.CreationTime.Date);
+        public static bool ShouldExcludeMinFileAge(this SelectionOptions options, FileInfo Source)
+            => options.ShouldExcludeMinFileAge(Source.CreationTime.Date);
 
         /// <inheritdoc cref="ShouldExcludeMinFileAge(SelectionOptions, DateTime)"/>
-        public static bool ShouldExcludeMinFileAge(this SelectionOptions options, IFilePair pair) 
-            => ShouldExcludeMinFileAge(options, pair.Source.CreationTime.Date);
+        public static bool ShouldExcludeMinFileAge(this SelectionOptions options, IFilePair pair)
+            => options.ShouldExcludeMinFileAge(pair.Source.CreationTime.Date);
 
         #endregion
 
@@ -309,14 +306,14 @@ namespace RoboSharp.Extensions.Helpers
         public static bool ShouldExcludeMaxFileSize(this SelectionOptions options, string source)
         {
             if (options.MaxFileSize <= 0) return false;
-            return ShouldExcludeMaxFileSize(options, new FileInfo(source));
+            return options.ShouldExcludeMaxFileSize(new FileInfo(source));
         }
 
         /// <inheritdoc cref="ShouldExcludeMaxFileSize(SelectionOptions, long)"/>
-        public static bool ShouldExcludeMaxFileSize(this SelectionOptions options, FileInfo Source) => ShouldExcludeMaxFileSize(options, Source.Length);
+        public static bool ShouldExcludeMaxFileSize(this SelectionOptions options, FileInfo Source) => options.ShouldExcludeMaxFileSize(Source.Length);
 
         /// <inheritdoc cref="ShouldExcludeMaxFileSize(SelectionOptions, long)"/>
-        public static bool ShouldExcludeMaxFileSize(this SelectionOptions options, IFilePair pair) => ShouldExcludeMaxFileSize(options, pair.Source.Length);
+        public static bool ShouldExcludeMaxFileSize(this SelectionOptions options, IFilePair pair) => options.ShouldExcludeMaxFileSize(pair.Source.Length);
 
         #endregion
 
@@ -336,14 +333,14 @@ namespace RoboSharp.Extensions.Helpers
         public static bool ShouldExcludeMinFileSize(this SelectionOptions options, string source)
         {
             if (options.MaxFileSize <= 0) return false;
-            return ShouldExcludeMinFileSize(options, new FileInfo(source));
+            return options.ShouldExcludeMinFileSize(new FileInfo(source));
         }
 
         /// <inheritdoc cref="ShouldExcludeMaxFileSize(SelectionOptions, long)"/>
-        public static bool ShouldExcludeMinFileSize(this SelectionOptions options, FileInfo Source) => ShouldExcludeMinFileSize(options, Source.Length);
+        public static bool ShouldExcludeMinFileSize(this SelectionOptions options, FileInfo Source) => options.ShouldExcludeMinFileSize(Source.Length);
 
         /// <inheritdoc cref="ShouldExcludeMinFileSize(SelectionOptions, long)"/>
-        public static bool ShouldExcludeMinFileSize(this SelectionOptions options, IFilePair pair) => ShouldExcludeMinFileSize(options, pair.Source.Length);
+        public static bool ShouldExcludeMinFileSize(this SelectionOptions options, IFilePair pair) => options.ShouldExcludeMinFileSize(pair.Source.Length);
 
         #endregion
 
@@ -361,13 +358,13 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldIncludeAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldIncludeAttributes(this SelectionOptions options, string source) => ShouldIncludeAttributes(options, File.GetAttributes(source));
+        public static bool ShouldIncludeAttributes(this SelectionOptions options, string source) => options.ShouldIncludeAttributes(File.GetAttributes(source));
 
         /// <inheritdoc cref="ShouldIncludeAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldIncludeAttributes(this SelectionOptions options, FileInfo Source) => ShouldIncludeAttributes(options, Source.Attributes);
+        public static bool ShouldIncludeAttributes(this SelectionOptions options, FileInfo Source) => options.ShouldIncludeAttributes(Source.Attributes);
 
         /// <inheritdoc cref="ShouldIncludeAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldIncludeAttributes(this SelectionOptions options, IFilePair pair) => ShouldIncludeAttributes(options, pair.Source.Attributes);
+        public static bool ShouldIncludeAttributes(this SelectionOptions options, IFilePair pair) => options.ShouldIncludeAttributes(pair.Source.Attributes);
 
         #endregion
 
@@ -385,13 +382,13 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeFileAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, string source) => ShouldExcludeFileAttributes(options, File.GetAttributes(source));
+        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, string source) => options.ShouldExcludeFileAttributes(File.GetAttributes(source));
 
         /// <inheritdoc cref="ShouldExcludeFileAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, FileInfo Source) => ShouldExcludeFileAttributes(options, Source.Attributes);
+        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, FileInfo Source) => options.ShouldExcludeFileAttributes(Source.Attributes);
 
         /// <inheritdoc cref="ShouldExcludeFileAttributes(SelectionOptions, FileAttributes)"/>
-        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, IFilePair pair) => ShouldExcludeFileAttributes(options, pair.Source.Attributes);
+        public static bool ShouldExcludeFileAttributes(this SelectionOptions options, IFilePair pair) => options.ShouldExcludeFileAttributes(pair.Source.Attributes);
 
         #endregion
 
@@ -436,12 +433,12 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeFileName(SelectionOptions, string, IEnumerable{Regex})"/>
-        public static bool ShouldExcludeFileName(this SelectionOptions options, FileInfo Source, IEnumerable<Regex> exclusionCollection) 
-            => ShouldExcludeFileName(options, Source.Name, exclusionCollection);
+        public static bool ShouldExcludeFileName(this SelectionOptions options, FileInfo Source, IEnumerable<Regex> exclusionCollection)
+            => options.ShouldExcludeFileName(Source.Name, exclusionCollection);
 
         /// <inheritdoc cref="ShouldExcludeFileName(SelectionOptions, string, IEnumerable{Regex})"/>
-        public static bool ShouldExcludeFileName(this SelectionOptions options, IFilePair pair, IEnumerable<Regex> exclusionCollection) 
-            => ShouldExcludeFileName(options, pair.Source.Name, exclusionCollection);
+        public static bool ShouldExcludeFileName(this SelectionOptions options, IFilePair pair, IEnumerable<Regex> exclusionCollection)
+            => options.ShouldExcludeFileName(pair.Source.Name, exclusionCollection);
 
         #endregion
 
@@ -455,15 +452,15 @@ namespace RoboSharp.Extensions.Helpers
         /// A collection of regex objects derived from <see cref="SelectionOptions.ExcludedDirectories"/>. <br/>
         /// If the collection is empty, the returned array will also be empty.
         /// </returns>
-        public static Helpers.DirectoryRegex[] GetExcludedDirectoryRegex(this SelectionOptions options)
+        public static DirectoryRegex[] GetExcludedDirectoryRegex(this SelectionOptions options)
         {
             if (options.ExcludedDirectories?.Any() ?? false)
             {
-                return options.ExcludedDirectories.Select(Helpers.DirectoryRegex.FromWildCard).ToArray();
+                return options.ExcludedDirectories.Select(DirectoryRegex.FromWildCard).ToArray();
             }
             else
             {
-                return Array.Empty<Helpers.DirectoryRegex>();
+                return Array.Empty<DirectoryRegex>();
             }
         }
 
@@ -477,7 +474,7 @@ namespace RoboSharp.Extensions.Helpers
         /// ref is used for optimization during the course of the run, to avoid creating regex for every file check.
         /// </param>
         /// <returns></returns>
-        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, string directoryPath, IEnumerable<Helpers.DirectoryRegex> exclusionCollection = null)
+        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, string directoryPath, IEnumerable<DirectoryRegex> exclusionCollection = null)
         {
             exclusionCollection ??= options.GetExcludedDirectoryRegex();
             if (exclusionCollection.None()) return false;
@@ -485,12 +482,12 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeDirectoryName(SelectionOptions, string, IEnumerable{DirectoryRegex})"/>
-        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, DirectoryInfo directoryPath, IEnumerable<Helpers.DirectoryRegex> exclusionCollection = null) 
-            => ShouldExcludeDirectoryName(options, directoryPath.FullName, exclusionCollection);
+        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, DirectoryInfo directoryPath, IEnumerable<DirectoryRegex> exclusionCollection = null)
+            => options.ShouldExcludeDirectoryName(directoryPath.FullName, exclusionCollection);
 
         /// <inheritdoc cref="ShouldExcludeDirectoryName(SelectionOptions, string, IEnumerable{DirectoryRegex})"/>
-        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, IDirectoryPair pair, IEnumerable<Helpers.DirectoryRegex> exclusionCollection = null) 
-            => ShouldExcludeDirectoryName(options, pair.Source.FullName, exclusionCollection);
+        public static bool ShouldExcludeDirectoryName(this SelectionOptions options, IDirectoryPair pair, IEnumerable<DirectoryRegex> exclusionCollection = null)
+            => options.ShouldExcludeDirectoryName(pair.Source.FullName, exclusionCollection);
 
         #endregion
 
@@ -512,10 +509,10 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ExcludeSymbolicFile(SelectionOptions, FileInfo)"/>
-        public static bool ExcludeSymbolicFile(this SelectionOptions options, IFilePair pair) => ExcludeSymbolicFile(options, pair.Source);
+        public static bool ExcludeSymbolicFile(this SelectionOptions options, IFilePair pair) => options.ExcludeSymbolicFile(pair.Source);
 
         /// <inheritdoc cref="ExcludeSymbolicFile(SelectionOptions, FileInfo)"/>
-        public static bool ExcludeSymbolicFile(this SelectionOptions options, string file) => ExcludeSymbolicFile(options, new FileInfo(file));
+        public static bool ExcludeSymbolicFile(this SelectionOptions options, string file) => options.ExcludeSymbolicFile(new FileInfo(file));
 
         #endregion
 
@@ -551,9 +548,9 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <inheritdoc cref="ShouldExcludeJunctionDirectory(SelectionOptions, string)"/>
-        public static bool ShouldExcludeJunctionDirectory(this SelectionOptions options, IDirectoryPair pair) => ShouldExcludeJunctionDirectory(options, pair.Source);
+        public static bool ShouldExcludeJunctionDirectory(this SelectionOptions options, IDirectoryPair pair) => options.ShouldExcludeJunctionDirectory(pair.Source);
 
-#endregion
+        #endregion
 
     }
 }

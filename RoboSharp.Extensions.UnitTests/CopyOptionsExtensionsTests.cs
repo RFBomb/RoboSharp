@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace RoboSharp.Extensions.UnitTests
+namespace RoboSharp.Extensions.Tests
 {
     [TestClass]
     public class CopyOptionsExtensionsTests
@@ -24,9 +24,9 @@ namespace RoboSharp.Extensions.UnitTests
         {
             var opt = new CopyOptions();
             opt.ApplyActionFlags(flags);
-            Assert.AreEqual(expected, Helpers.CopyOptionsExtensions.IsRecursive(opt), "CopyOptions Extension method Failed");
-            Assert.AreEqual(expected, Helpers.CopyOptionsExtensions.IsRecursive(flags), "Flags extension method Failed");
-            Assert.AreEqual(expected, Helpers.CopyOptionsExtensions.IsRecursive(opt.GetCopyActionFlags()), "CopyOptions.GetCopyActionFlags() method Failed");
+            Assert.AreEqual(expected, Extensions.Options.CopyOptionsExtensions.IsRecursive(opt), "CopyOptions Extension method Failed");
+            Assert.AreEqual(expected, Extensions.Options.CopyOptionsExtensions.IsRecursive(flags), "Flags extension method Failed");
+            Assert.AreEqual(expected, Extensions.Options.CopyOptionsExtensions.IsRecursive(opt.GetCopyActionFlags()), "CopyOptions.GetCopyActionFlags() method Failed");
         }
     }
 }

@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Options
 {
     /// <summary>
-    /// Extensions for the loggingOptions ojbect
+    /// Extension Methods for <see cref="RoboSharp.LoggingOptions"/> to assist with custom implementations
     /// </summary>
-    public static class LoggingOptionsExtensions
+    public static class LoggingExtensions
     {
         /// <summary>
         /// Evalute the path against the <see cref="LoggingOptions.UnicodeLogPath"/> and the other paths
@@ -20,7 +20,7 @@ namespace RoboSharp.Extensions.Helpers
         /// <param name="CompareAgainstAppendUniPath">true to compare against <see cref="LoggingOptions.AppendUnicodeLogPath"/></param>
         /// <param name="CompareAgainstLogPath">true to compare against <see cref="LoggingOptions.LogPath"/></param>
         /// <returns>True if the path is writable and unique</returns>
-        private static bool IsUniquePath(LoggingOptions options,string path, bool CompareAgainstAppendUniPath, bool CompareAgainstLogPath)
+        private static bool IsUniquePath(LoggingOptions options, string path, bool CompareAgainstAppendUniPath, bool CompareAgainstLogPath)
         {
             if (options is null) throw new ArgumentNullException(nameof(options));
             if (string.IsNullOrWhiteSpace(path)) return false;
@@ -44,10 +44,10 @@ namespace RoboSharp.Extensions.Helpers
 
             if (options is null) throw new ArgumentNullException(nameof(options));
             if (!string.IsNullOrWhiteSpace(options.UnicodeLogPath))
-                    File.WriteAllLines(options.UnicodeLogPath, lines, Encoding.Unicode);
+                File.WriteAllLines(options.UnicodeLogPath, lines, Encoding.Unicode);
 
             if (IsUniquePath(options, options.AppendUnicodeLogPath, false, false))
-                    File.WriteAllLines(options.AppendUnicodeLogPath, lines, Encoding.Unicode);
+                File.WriteAllLines(options.AppendUnicodeLogPath, lines, Encoding.Unicode);
 
             if (IsUniquePath(options, options.LogPath, true, false))
             {
@@ -68,17 +68,17 @@ namespace RoboSharp.Extensions.Helpers
 
         /// <inheritdoc cref="AppendToLogs(LoggingOptions, Encoding, string[])"/>
         public static void AppendToLogs(this LoggingOptions options, params string[] lines)
-            => AppendToLogs(options, null, lines);
+            => options.AppendToLogs(null, lines);
 
         /// <summary>
         /// <see cref="AppendToLogs(LoggingOptions, string[])"/> wrapped inside of Task.Run
         /// </summary>
         /// <inheritdoc cref="AppendToLogs(LoggingOptions, string[])"/>
         /// <remarks><inheritdoc cref="AppendToLogs(LoggingOptions, string[])" path="*"/></remarks>
-        public static Task AppendToLogsAsync(this LoggingOptions LoggingOptions, Encoding defaultEncoding = null, params string[] lines) => Task.Run(() => AppendToLogs(LoggingOptions, defaultEncoding, lines));
+        public static Task AppendToLogsAsync(this LoggingOptions LoggingOptions, Encoding defaultEncoding = null, params string[] lines) => Task.Run(() => LoggingOptions.AppendToLogs(defaultEncoding, lines));
 
         /// <inheritdoc cref="AppendToLogsAsync(LoggingOptions, Encoding, string[])"/>
-        public static Task AppendToLogsAsync(this LoggingOptions LoggingOptions, params string[] lines) => Task.Run(() => AppendToLogs(LoggingOptions, lines));
+        public static Task AppendToLogsAsync(this LoggingOptions LoggingOptions, params string[] lines) => Task.Run(() => LoggingOptions.AppendToLogs(lines));
 
 
         /// <summary>

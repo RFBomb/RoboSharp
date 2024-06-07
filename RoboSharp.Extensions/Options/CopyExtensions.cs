@@ -3,18 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using RoboSharp.Extensions.Helpers;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions.Options
 {
     /// <summary>
-    /// Extension Methods for Copy options to assist with custom implementations
+    /// Extension Methods for <see cref="RoboSharp.CopyOptions"/> to assist with custom implementations
     /// </summary>
-    public static class CopyOptionsExtensions
+    public static class CopyExtensions
     {
-
         /// <summary>
         /// Evaluates the <paramref name="flag"/> to check if any of the MOV options are enabled
         /// </summary>
@@ -136,7 +134,7 @@ namespace RoboSharp.Extensions.Helpers
                 return Array.Empty<Regex>();
             }
             //Non-Default filters have been specified - convert into regex
-            return options.FileFilter.Select(SelectionOptionsExtensions.CreateWildCardRegex).ToArray();
+            return options.FileFilter.Select(SelectionExtensions.CreateWildCardRegex).ToArray();
         }
 
         /// <summary>
