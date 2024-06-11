@@ -24,6 +24,12 @@ namespace RoboSharp.Extensions
         bool _isMoving;
         bool _wasCancelled;
 
+        /// <inheritdoc cref="StreamedCopier(FileInfo, FileInfo, IDirectoryPair)"/>
+        public static new StreamedCopier CreatePair(FileInfo source, FileInfo destination, IProcessedDirectoryPair parent = null) => new StreamedCopier(source, destination, parent);
+
+        /// <inheritdoc cref="StreamedCopier(IFilePair, IDirectoryPair)"/>
+        public static new StreamedCopier CreatePair(IFilePair filePair, IProcessedDirectoryPair parent = null) => new StreamedCopier(filePair, parent);
+
         /// <inheritdoc/>
         public StreamedCopier(IFilePair filePair, IDirectoryPair parent = null) : base(filePair, parent)
         {

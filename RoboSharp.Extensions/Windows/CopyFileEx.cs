@@ -23,6 +23,13 @@ namespace RoboSharp.Extensions.Windows
         private bool _disposed;
         private CancellationTokenSource _cancellationSource;
 
+        /// <inheritdoc cref="CopyFileEx(FileInfo, FileInfo, IDirectoryPair)"/>
+        public static new CopyFileEx CreatePair(FileInfo source, FileInfo destination, IProcessedDirectoryPair parent = null) => new CopyFileEx(source, destination, parent);
+
+        /// <inheritdoc cref="CopyFileEx(IFilePair, IDirectoryPair)"/>
+        public static new CopyFileEx CreatePair(IFilePair filePair, IProcessedDirectoryPair parent = null) => new CopyFileEx(filePair, parent);
+
+
         /// <summary>
         /// Create a new FileCopier from the supplied file paths
         /// </summary>
@@ -172,7 +179,7 @@ namespace RoboSharp.Extensions.Windows
                         //Writer - consumes a thread while not paused
                         try
                         {
-                            LPPROGRESS_ROUTINE callback = CreateCallback(progressRecorder);
+                            LPPROGRESS_ROUTINE callback = CreateCallbackInternal(progressRecorder, CancellationToken.None);
                             copied = await Task.Run(() =>
                             {
                                 var result = CopyFileEx.InvokeCopyFileEx(Source.FullName, Destination.FullName, callback, options);

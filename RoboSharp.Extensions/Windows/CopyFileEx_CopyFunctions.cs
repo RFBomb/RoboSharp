@@ -56,7 +56,7 @@ namespace RoboSharp.Extensions.Windows
         {
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
-            return InvokeCopyFileEx(source, destination, FileFunctions.CreateCallback(progressCallback, default), flags);
+            return InvokeCopyFileEx(source, destination, FileFunctions.CreateCallbackInternal(progressCallback, default), flags);
         }
 
         ///<inheritdoc cref="CopyFile(string,string,CopyFileExOptions, CopyProgressCallback)"/>
@@ -77,7 +77,7 @@ namespace RoboSharp.Extensions.Windows
         {
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
-            LPPROGRESS_ROUTINE callback = FileFunctions.CreateCallback(progressCallback, token);
+            LPPROGRESS_ROUTINE callback = FileFunctions.CreateCallbackInternal(progressCallback, token);
             return Task.Run(() => InvokeCopyFileEx(source, destination, callback, flags), token);
         }
 
@@ -197,7 +197,7 @@ namespace RoboSharp.Extensions.Windows
             }
 
             //Writer
-            var callback = FileFunctions.CreateCallback(progressRecorder, token);
+            var callback = FileFunctions.CreateCallbackInternal(progressRecorder, token);
 
             return Task.Run(() => InvokeCopyFileEx(source, destination, callback, options: default), token)
                 .ContinueWith(async result =>

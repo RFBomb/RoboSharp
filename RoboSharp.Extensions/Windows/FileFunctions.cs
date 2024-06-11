@@ -77,7 +77,7 @@ namespace RoboSharp.Extensions.Windows
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
             // Invoke
-            return InvokeMoveFileWithProgress(source, destination, CreateCallback(progressCallback), options);
+            return InvokeMoveFileWithProgress(source, destination, CreateCallbackInternal(progressCallback), options);
         }
 
         ///<inheritdoc cref="MoveFileWithProgress(string, string, CopyProgressCallback, MoveFileOptions)"/>
@@ -100,7 +100,7 @@ namespace RoboSharp.Extensions.Windows
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
             // Invoke
-            var callback = CreateCallback(progressCallback, token);
+            var callback = CreateCallbackInternal(progressCallback, token);
             return Task.Run(() => InvokeMoveFileWithProgress(source, destination, callback, options), token);
         }
 
@@ -183,7 +183,7 @@ namespace RoboSharp.Extensions.Windows
 
             try
             {
-                var callback = FileFunctions.CreateCallback(ProgressHandler, token);
+                var callback = FileFunctions.CreateCallbackInternal(ProgressHandler, token);
                 MoveFileOptions options = MoveFileOptions.COPY_ALLOWED | MoveFileOptions.WRITE_THROUGH;
                 if (overwrite) options |= MoveFileOptions.REPLACE_EXISTSING;
                 result = await Task.Run(() => InvokeMoveFileWithProgress(source, destination, callback, options), token).ConfigureAwait(false);

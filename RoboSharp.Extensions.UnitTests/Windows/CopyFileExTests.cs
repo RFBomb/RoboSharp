@@ -36,6 +36,18 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             Assert.IsTrue(cts_linked.IsCancellationRequested);
         }
 
+        [TestMethod()]
+        public async Task RunIFileCopierTests()
+        {
+            IFileCopierFactory factory = new CopyFileExFactory() { Options = CopyFileExOptions.NONE };
+            if (VersionManager.IsPlatformWindows)
+            {
+                _ = await IFileCopierTests.RunTest(factory);
+            }
+            else
+                await Assert.ThrowsExceptionAsync<PlatformNotSupportedException>(() => IFileCopierTests.RunTest(factory));
+        }
+
         [TestMethod]
         public void CopyFileEx_ToDirectory()
         {
@@ -52,7 +64,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsFalse(Directory.Exists(destFolder), "Destination folder already Exists!");
                 Assert.IsFalse(File.Exists(destFile), "Destination File Already Exists!");
                 //Test the function
-                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile), "Function returned False (copy failed)");
+                Assert.IsTrue(CopyFileEx.CopyFile(sourceFile, destFile, default), "Function returned False (copy failed)");
                 Assert.IsTrue(File.Exists(destFile), "File does not exist at destination");
             }
             finally
@@ -76,7 +88,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
 
                 // Source Missing Test
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
-                Assert.ThrowsException<FileNotFoundException>(() => FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS));
+                Assert.ThrowsException<FileNotFoundException>(() => CopyFileEx.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS));
 
                 // Prep for Fail_If_Exists Test
                 File.WriteAllText(sourceFile, "Test Contents");
@@ -85,46 +97,46 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsTrue(File.Exists(destFile));
 
                 // Fail_If_Exists -- Overwrite
-                Assert.ThrowsException<IOException>(() => FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set");
-                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set");
+                Assert.ThrowsException<IOException>(() => CopyFileEx.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set");
+                Assert.IsTrue(CopyFileEx.CopyFile(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set");
 
                 // Cancellation
-                var cancelCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var cancelCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.CANCEL;
                 });
                 Assert.IsFalse(callbackHit);
-                Assert.ThrowsException<OperationCanceledException>(() => FileFunctions.CopyFile(sourceFile, destFile, default, cancelCallback), "\nOperation was not cancelled");
+                Assert.ThrowsException<OperationCanceledException>(() => CopyFileEx.CopyFile(sourceFile, destFile, default, cancelCallback), "\nOperation was not cancelled");
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.AreEqual(1, callbackHitCount, "\nCallback count incorrect");
                 callbackHit = false;
                 callbackHitCount = 0;
 
                 // Quiet
-                var quietCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var quietCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.QUIET;
                 });
                 Assert.IsFalse(callbackHit);
-                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile, default, quietCallback));
+                Assert.IsTrue(CopyFileEx.CopyFile(sourceFile, destFile, default, quietCallback));
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.AreEqual(1, callbackHitCount, "\nCallback count incorrect");
                 callbackHit = false;
                 callbackHitCount = 0;
 
                 // Continue
-                var continueCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var continueCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.CONTINUE;
                 });
                 Assert.IsFalse(callbackHit);
-                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile, default, continueCallback));
+                Assert.IsTrue(CopyFileEx.CopyFile(sourceFile, destFile, default, continueCallback));
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.IsTrue(callbackHitCount >= 2, "\nCallback count incorrect");
                 callbackHit = false;
@@ -149,7 +161,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 // Source Missing Test
                 Console.WriteLine(string.Format("Source: {0}\nDestination: {1}", sourceFile, destFile));
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE));
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE));
 
                 // Prep for Fail_If_Exists Test
                 File.WriteAllText(sourceFile, "Test Contents");
@@ -158,46 +170,46 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsTrue(File.Exists(destFile));
 
                 // Fail_If_Exists -- Overwrite
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set");
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set");
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set");
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set");
 
                 // Cancellation
-                var cancelCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var cancelCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.CANCEL;
                 });
                 Assert.IsFalse(callbackHit);
-                await Assert.ThrowsExceptionAsync<OperationCanceledException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, cancelCallback), "\nOperation was not cancelled");
+                await Assert.ThrowsExceptionAsync<OperationCanceledException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, cancelCallback), "\nOperation was not cancelled");
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.AreEqual(1, callbackHitCount, "\nCallback count incorrect");
                 callbackHit = false;
                 callbackHitCount = 0;
 
                 // Quiet
-                var quietCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var quietCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.QUIET;
                 });
                 Assert.IsFalse(callbackHit);
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, quietCallback));
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, quietCallback));
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.AreEqual(1, callbackHitCount, "\nCallback count incorrect");
                 callbackHit = false;
                 callbackHitCount = 0;
 
                 // Continue
-                var continueCallback = FileFunctions.CreateCallback((long a, long b) =>
+                var continueCallback = FileFunctions.CreateCallback((ProgressUpdate b) =>
                 {
                     callbackHit = true;
                     callbackHitCount++;
                     return CopyProgressCallbackResult.CONTINUE;
                 });
                 Assert.IsFalse(callbackHit);
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, continueCallback));
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, continueCallback));
                 Assert.IsTrue(callbackHit, "\nCallback was not hit");
                 Assert.IsTrue(callbackHitCount >= 2, "\nCallback count incorrect");
                 callbackHit = false;
@@ -234,12 +246,12 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 progSize.ProgressChanged += (o, e) => progSizeUpdated = true;
 
                 string assertMessage = "\n Source File Missing Test";
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile), assertMessage);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, false), assertMessage);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, true), assertMessage);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
-                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, false), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, true), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
+                await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsFalse(progFullUpdated | progSizeUpdated | progPercentUpdated);
 
                 File.WriteAllText(sourceFile, "Test Contents");
@@ -249,21 +261,21 @@ namespace RoboSharp.Extensions.Windows.UnitTests
 
                 // Prevent Overwrite
                 assertMessage = "\n Overwrite Prevention Test";
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile), assertMessage);
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, false), assertMessage);
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progFull, 100, false), assertMessage);
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, false), assertMessage);
-                await Assert.ThrowsExceptionAsync<IOException>(async () => await FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, false), assertMessage);
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile), assertMessage);
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, false), assertMessage);
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, false), assertMessage);
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, false), assertMessage);
+                await Assert.ThrowsExceptionAsync<IOException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, false), assertMessage);
 
                 // Overwrite
                 progPercentUpdated = false;
                 progSizeUpdated = false;
                 progFullUpdated = false;
                 assertMessage = "\n Allow Overwrite Test";
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, true), assertMessage);
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
-                Assert.IsTrue(await FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
@@ -273,11 +285,11 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 var cdToken = new CancellationTokenSource();
                 cdToken.Cancel();
                 File.Delete(destFile);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progFull, 100, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, false, cdToken.Token), assertMessage);
                 Assert.IsFalse(File.Exists(destFile));
 
                 // Cancellation Mid-Write
@@ -287,11 +299,11 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 progPercentUpdated = false;
                 progSizeUpdated = false;
                 progFullUpdated = false;
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progFull, 100, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, false, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, false, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, false, GetTimedToken()), assertMessage);
                 // These progress report assertions are to check that the operation STARTED but was cancelled prior to completion, causing deletion because Restartable mode was not used.
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
