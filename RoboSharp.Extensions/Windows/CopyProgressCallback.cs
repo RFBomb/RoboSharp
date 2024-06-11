@@ -41,13 +41,6 @@ namespace RoboSharp.Extensions.Windows
         //,IntPtr data
         );
 
-    /// <summary>Method signature for function to pass into <see cref="CopyFileEx.CreateCallback(BytesTransferredCallback)"/></summary>
-    /// <remarks>
-    /// Signature : Func&lt;<see langword="long"/> totalFileSize, <see langword="long"/> bytesTransfered, <see cref="CopyProgressCallbackResult"/>&gt;
-    /// </remarks>
-    /// <inheritdoc cref="CopyProgressCallback"/>
-    public delegate CopyProgressCallbackResult BytesTransferredCallback(long totalFileSize, long totalTransferred);
-
     /// <summary>
     /// Event description from CopyFileEx (why its performing the callback)
     /// </summary>
@@ -93,85 +86,62 @@ namespace RoboSharp.Extensions.Windows
         QUIET = 3U
     }
 
-    public partial class CopyFileEx
+    public static partial class FileFunctions
     {
+        /// <summary>
+        /// Create a new <see cref="LPPROGRESS_ROUTINE"/> that wraps the <paramref name="callback"/>
+        /// </summary>
+        /// <param name="callback">The callback to wrap</param>
+        /// <returns>If <paramref name="callback"/> is null, returns null. Otherwise returns a <see cref="LPPROGRESS_ROUTINE"/></returns>
+        internal static unsafe LPPROGRESS_ROUTINE CreateCallback(CopyProgressCallback callback)
+        {
+            if (callback is null) return null;
+
+            return new LPPROGRESS_ROUTINE((totalFileSize, totalBytesTransferred, streamSize, streamBytesTransferred, dwStreamNumber, dwCallbackReason, _, _, _) =>
+            {
+                return (uint)callback(totalFileSize, totalBytesTransferred, streamSize, streamBytesTransferred, dwStreamNumber, (CopyProgressCallbackReason)dwCallbackReason);
+            });
+        }
+
         /// <summary>
         /// Create a callback new callback that wraps the <paramref name="token"/> in order to detected a cancellation request and pass it back to CopyFileEx
         /// </summary>
         /// <param name="token">The token to wrap</param>
         /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(CancellationToken token)
+        internal static unsafe LPPROGRESS_ROUTINE CreateCallback(CancellationToken token)
         {
-            return GetResult;
-            CopyProgressCallbackResult GetResult(long tfs, long bc, long _1, long _2, uint _3, CopyProgressCallbackReason reason)
+            if (!token.CanBeCanceled) return null;
+
+            return new LPPROGRESS_ROUTINE((_, _, _, _, _, _, _, _, _) =>
             {
-                return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE;
-            }
+                return (uint)(token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE);
+            });
         }
 
         /// <summary>
         /// Wrap an existing callback method, combinining with the the token to detect if the copy operation should be cancelled.
         /// </summary>
         /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(CopyProgressCallback callback, CancellationToken token)
+        internal static unsafe LPPROGRESS_ROUTINE CreateCallback(CopyProgressCallback callback, CancellationToken token)
         {
-            if (callback is null) return CreateCallback(token);
-            return GetResult;
-            CopyProgressCallbackResult GetResult(long a, long b, long c, long d, uint e, CopyProgressCallbackReason f)
+            if (callback is null && !token.CanBeCanceled)
+                return null;
+
+            else if (callback is null)
+                return CreateCallback(token);
+
+            else if (token.CanBeCanceled)
             {
-                var result = callback?.Invoke(a, b, c, d, e, f);
-                if (token.IsCancellationRequested)
-                    result = CopyProgressCallbackResult.CANCEL;
-                return result ?? CopyProgressCallbackResult.CONTINUE;
+                return new LPPROGRESS_ROUTINE((a, b, c, d, e, f, _, _, _) =>
+                {
+                    var result = callback.Invoke(a, b, c, d, e, (CopyProgressCallbackReason)f);
+                    if (token.IsCancellationRequested)
+                        result = CopyProgressCallbackResult.CANCEL;
+                    return (uint)result;
+                });
             }
-        }
-
-        /// <summary>
-        /// Create a callback new callback from a function that takes no parameters and returns a CallBack result
-        /// </summary>
-        /// <param name="shouldContinueCallback">The callback to wrap</param>
-        /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(Func<CopyProgressCallbackResult> shouldContinueCallback)
-        {
-            return new CopyProgressCallback((tfs, bc, _1, _2, _3, reason) => shouldContinueCallback());
-        }
-
-        /// <summary>
-        /// Create a callback new callback from a function that takes no parameters and returns a CallBack result. 
-        /// <br/>The Cancellation token takes priority over the callback.
-        /// </summary>
-        /// <param name="shouldContinueCallback">The callback to wrap</param>
-        /// <param name="token">The token. If cancelled, the <paramref name="shouldContinueCallback"/> will not be executed and <see cref="CopyProgressCallbackResult.CANCEL"/> will be returned.</param>
-        /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(Func<CopyProgressCallbackResult> shouldContinueCallback, CancellationToken token)
-        {
-            if (!token.CanBeCanceled) return CreateCallback(shouldContinueCallback);
-            return GetResult;
-            CopyProgressCallbackResult GetResult(long tfs, long bc, long _1, long _2, uint _3, CopyProgressCallbackReason reason)
-            {
-                return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : shouldContinueCallback();
-            }
-        }
-
-        /// <inheritdoc cref="CreateCallback(BytesTransferredCallback, CancellationToken)"/>
-        public static CopyProgressCallback CreateCallback(BytesTransferredCallback callback) => CreateCallback(callback, CancellationToken.None);
-
-        /// <summary>
-        /// Wrap a callback with the provided <paramref name="token"/> to determine if cancellation is required
-        /// </summary>
-        /// <param name="callback">The callback with a signature of : <br/><code>Func&lt;<see langword="long"/> totalFileSize, <see langword="long"/> bytesTransfered, <see cref="CopyProgressCallbackResult"/>&gt;</code></param>
-        /// <param name="token">Token used to determine if the copy operation should be cancelled.</param>
-        /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(BytesTransferredCallback callback, CancellationToken token)
-        {
-            return GetResult;
-            CopyProgressCallbackResult GetResult(long tfs, long bc, long _1, long _2, uint _3, CopyProgressCallbackReason reason)
-            {
-                var result = callback?.Invoke(tfs, bc);
-                if (token.IsCancellationRequested)
-                    result = CopyProgressCallbackResult.CANCEL;
-                return result ?? CopyProgressCallbackResult.CONTINUE;
-            }
+            else
+                return CreateCallback(callback);
         }
 
         /// <summary>
@@ -180,16 +150,16 @@ namespace RoboSharp.Extensions.Windows
         /// <param name="action">The action to perform. First parameter is total file size, second parameter is number of bytes copied.</param>
         /// <param name="token">Token used to determine if the copy operation should be cancelled.</param>
         /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(Action<long, long> action, CancellationToken token)
+        internal unsafe static LPPROGRESS_ROUTINE CreateCallback(Action<long, long> action, CancellationToken token)
         {
             if (action is null && !token.CanBeCanceled) return null;
             if (action is null) return token.CanBeCanceled ? CreateCallback(token) : null;
-            return GetResult;
-            CopyProgressCallbackResult GetResult(long tfs, long bc, long _1, long _2, uint _3, CopyProgressCallbackReason reason)
+
+            return new LPPROGRESS_ROUTINE((size, totalRead, _, _, _, _, _, _, _) =>
             {
-                action(tfs, bc);
-                return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE;
-            }
+                action(size, totalRead);
+                return (uint)(token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE);
+            });
         }
 
         /// <summary>
@@ -201,14 +171,27 @@ namespace RoboSharp.Extensions.Windows
         public static CopyProgressCallback CreateCallback(IProgress<double> progress, CancellationToken token = default)
         {
             if (progress is null && !token.CanBeCanceled) return null;
-            if (progress is null) return token.CanBeCanceled ? CreateCallback(token) : null;
-            return report;
-
-            CopyProgressCallbackResult report(long total, long processed, long _1, long _2, uint _3, CopyProgressCallbackReason reason)
+            return new CopyProgressCallback((total, processed, _, _, _, _) =>
             {
                 progress.Report((double)100 * processed / total);
                 return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE;
-            }
+            });
+        }
+
+        /// <summary>
+        /// Create a new callback that will calculate the current progress and report it to the <paramref name="progress"/> object
+        /// </summary>
+        /// <param name="progress">The object to report progress to</param>
+        /// <param name="token">Token used to determine if the copy operation should be cancelled.</param>
+        /// <returns>A new <see cref="CopyProgressCallback"/></returns>
+        public static CopyProgressCallback CreateCallback(IProgress<ProgressUpdate> progress, CancellationToken token = default)
+        {
+            if (progress is null && !token.CanBeCanceled) return null;
+            return new CopyProgressCallback((total, processed, _, _, _, _) =>
+            {
+                progress.Report(new ProgressUpdate(total, processed));
+                return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE;
+            });
         }
     }
 }

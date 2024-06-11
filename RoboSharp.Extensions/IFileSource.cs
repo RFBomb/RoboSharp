@@ -10,7 +10,7 @@ namespace RoboSharp.Extensions
     public interface IFileSource
     {
         /// <summary>
-        /// The full path to the Source Directory to copy files from
+        /// The fully qualified path to a file
         /// </summary>
         string FilePath { get; }
     }

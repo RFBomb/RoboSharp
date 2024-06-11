@@ -7,11 +7,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RoboSharp.Extensions.Windows;
+using Windows.Win32.Storage.FileSystem;
+using Win32 = Windows.Win32;
 
 namespace RoboSharp.Extensions.Windows
 {
     /// <summary>
-    /// Windows-Specific Functionality and Extensions
+    /// Windows-Specific Functionality and Extensions for Moving Files
     /// </summary>
     public static partial class FileFunctions
     {
@@ -21,9 +23,8 @@ namespace RoboSharp.Extensions.Windows
         /// <param name="options"></param>
         /// <returns>
         /// A set of <see cref="CopyFileExOptions"/> that may have the following options enabled : 
-        /// <br/> - <see cref="CopyFileExOptions.NO_OFFLOAD"/>
         /// <br/> - <see cref="CopyFileExOptions.NO_BUFFERING"/>
-        /// <br/> - <see cref="CopyFileExOptions.RESTARTABLE"/> | <see cref="CopyFileExOptions.RESUME_FROM_PAUSE"/>
+        /// <br/> - <see cref="CopyFileExOptions.RESTARTABLE"/>
         /// <br/> - <see cref="CopyFileExOptions.COPY_SYMLINK"/>
         /// <br/> - <see cref="CopyFileExOptions.REQUEST_COMPRESSED_TRAFFIC"/>
         /// </returns>
@@ -38,112 +39,102 @@ namespace RoboSharp.Extensions.Windows
             return copyOptions;
         }
 
-        /// <summary>
-        /// Moves a file or directory, including its children. You can provide a callback function that receives progress notifications.
-        /// </summary>
-        /// <param name="lpExistingFileName">The name of the existing file or directory on the local computer.</param>
-        /// <param name="lpNewFileName">The new name of the file or directory on the local computer.</param>
-        /// <param name="lpProgressRoutine">A pointer to a CopyProgressRoutine callback function that is called each time another portion of the file has been moved. The callback function can be useful if you provide a user interface that displays the progress of the operation. This parameter can be NULL.</param>
-        /// <param name="lpData">An argument to be passed to the CopyProgressRoutine callback function. This parameter can be NULL.</param>
-        /// <param name="dwFlags">The move options. </param>
-        /// <returns>If the function succeeds, the return value is nonzero.
-        ///  If the function fails, the return value is zero.To get extended error information, call GetLastError. 
-        ///  <para/>When moving a file across volumes, if lpProgressRoutine returns PROGRESS_CANCEL due to the user canceling the operation, MoveFileWithProgress will return zero and GetLastError will return ERROR_REQUEST_ABORTED.The existing file is left intact.
-        ///  <para/>When moving a file across volumes, if lpProgressRoutine returns PROGRESS_STOP due to the user stopping the operation, MoveFileWithProgress will return zero and GetLastError will return ERROR_REQUEST_ABORTED.The existing file is left intact.
-        /// </returns>
-        /// <see href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefilewithprogressa"/>
-        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool MoveFileWithProgressA(
-            string lpExistingFileName,
-            string lpNewFileName,
-            CopyProgressCallback lpProgressRoutine,
-            IntPtr lpData,
-            uint dwFlags); //ToDo : Convert this to the source-Generated version
+        /// <param name="source"><inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)" path="/param[@name='lpExistingFileName']"/></param>
+        /// <param name="destination"><inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)" path="/param[@name='lpNewFileName']"/></param>
+        /// <param name="progressCallback"><inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)" path="/param[@name='lpProgressRoutine']"/></param>
+        /// <param name="options"><inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)" path="/param[@name='dwFlags']"/></param>
+        /// <inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)"/>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "Throws if not windows")]
+        internal static unsafe bool InvokeMoveFileWithProgress(string source, string destination, LPPROGRESS_ROUTINE progressCallback, MoveFileOptions options)
+        {
+            //Prepare
+            VersionManager.ThrowIfNotWindowsPlatform("P/Invoke.MoveFileWithProgress is only available on Windows");
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
 
-        /// <summary>
-        /// Moves a file using the MoveFileWithProgressA function directly.
-        /// </summary>
-        /// <param name="source">The path to the source file.</param>
-        /// <param name="destination">The path to the destination file.</param>
-        /// <param name="progressCallback">Callback function for progress notifications during the copy operation.
-        ///  <para/>When moving a file across volumes, if <paramref name="progressCallback"/> returns <see cref="CopyProgressCallbackResult.CANCEL"/> : throw <see cref="OperationCanceledException"/>. The existing file is left intact.
-        ///  <para/>When moving a file across volumes, if <paramref name="progressCallback"/> returns <see cref="CopyProgressCallbackResult.STOP"/> : throw <see cref="OperationCanceledException"/>. The existing file is left intact.
+            //Execute
+            bool returnValue = Win32.PInvoke.MoveFileWithProgress(source, destination, progressCallback, lpData: null, dwFlags: (MOVE_FILE_FLAGS)options);
+            if (!returnValue) Win32Error.ThrowLastError(source, destination);
+            return returnValue;
+        }
+
+        /// <param name="source">The path to the source file.<para/><inheritdoc cref="InvokeMoveFileWithProgress" path="/param[@name='source']"/></param>
+        /// <param name="destination">The path to the destination file.<para/><inheritdoc cref="InvokeMoveFileWithProgress" path="/param[@name='destination']"/></param>
+        /// <param name="progressCallback">Callback function for progress notifications during the copy operation. Can be null.
+        ///  <para/>If the <paramref name="progressCallback"/> returns either <see cref="CopyProgressCallbackResult.CANCEL"/> or <see cref="CopyProgressCallbackResult.STOP"/>, 
+        ///  this method will throw a <see cref="OperationCanceledException"/>. The <paramref name="source"/> file is left intact.
         /// </param>
-        /// <param name="data">User-defined data passed to the progress callback.</param>
-        /// <param name="flags">Flags specifying how the file should be moved.</param>
-        /// <returns>If the function succeeds, the return value is nonzero. </returns>
-        /// <inheritdoc cref="MoveFileWithProgressA(string, string, CopyProgressCallback, IntPtr, uint)"/>
+        /// <param name="options">Flags specifying how the file should be moved.</param>
+        /// <returns>True if the file was moved successfully, otherwise false.</returns>
+        /// <inheritdoc cref="Win32.PInvoke.MoveFileWithProgress(string, string, LPPROGRESS_ROUTINE, void*, MOVE_FILE_FLAGS)"/>
         /// <exception cref="OperationCanceledException"/>
         /// <exception cref="IOException"/>
         /// <exception cref="FileNotFoundException"/>
         /// <exception cref="Exception"/>
-        public static bool MoveFile(
-            string source,
-            string destination,
-            CopyProgressCallback progressCallback = null,
-            IntPtr data = default(IntPtr),
-            MoveFileOptions flags = MoveFileOptions.Default
-            )
+        public static bool MoveFileWithProgress(string source, string destination, CopyProgressCallback progressCallback, MoveFileOptions options = MoveFileOptions.Default )
         {
-            //Check for locked file prior to starting the write process
+            // Prepare
+            VersionManager.ThrowIfNotWindowsPlatform("P/Invoke.MoveFileWithProgress is only available on Windows");
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
-            bool returnVal = MoveFileWithProgressA(source, destination, progressCallback, data, (uint)flags);
-            if (!returnVal) Win32Error.ThrowLastError(source, destination);
-            return returnVal;
+            // Invoke
+            return InvokeMoveFileWithProgress(source, destination, CreateCallback(progressCallback), options);
         }
 
+        ///<inheritdoc cref="MoveFileWithProgress(string, string, CopyProgressCallback, MoveFileOptions)"/>
+        public static bool MoveFileWithProgress(string source, string destination, MoveFileOptions options)
+            => MoveFileWithProgress(source, destination, null, options);
+
         /// <summary>
-        /// Executes the MoveFile function via Task.Run()
+        /// Executes the MoveFileWithProgress function via Task.Run()
         /// </summary>
-        /// <inheritdoc cref="MoveFile(string, string, CopyProgressCallback, IntPtr, MoveFileOptions)"/>
-        public static Task<bool> MoveFileAsync(string source,
+        /// <inheritdoc cref="MoveFileWithProgress(string, string, CopyProgressCallback, MoveFileOptions)"/>
+        public static Task<bool> MoveFileWithProgressAsync(string source,
             string destination,
             CopyProgressCallback progressCallback = null,
-            IntPtr data = default(IntPtr),
-            MoveFileOptions flags = MoveFileOptions.Default,
+            MoveFileOptions options = MoveFileOptions.Default,
             CancellationToken token = default
             )
         {
-            if (token.CanBeCanceled)
-            {
-                progressCallback = CopyFileEx.CreateCallback(progressCallback, token);
-            }
-            return Task.Run(() => MoveFile(source, destination, progressCallback, data, flags), token);
+            // Prepare
+            VersionManager.ThrowIfNotWindowsPlatform("P/Invoke.MoveFileWithProgress is only available on Windows");
+            if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination));
+            // Invoke
+            var callback = CreateCallback(progressCallback, token);
+            return Task.Run(() => InvokeMoveFileWithProgress(source, destination, callback, options), token);
         }
 
-        /// <inheritdoc cref="MoveFileAsync(string, string, bool, CancellationToken)"/>
-        public static Task<bool> MoveFileAsync(string source, string destination)
-            => MoveFileAsync(source, destination, false, CancellationToken.None);
+        /// <inheritdoc cref="MoveFileWithProgressAsync(string, string, bool, CancellationToken)"/>
+        public static Task<bool> MoveFileWithProgressAsync(string source, string destination)
+            => MoveFileWithProgressAsync(source, destination, false, CancellationToken.None);
 
-        /// <inheritdoc cref="MoveFileAsync(string, string, bool, CancellationToken)"/>
-        public static Task<bool> MoveFileAsync(string source, string destination, CancellationToken token)
-            => MoveFileAsync(source, destination, false, token);
+        /// <inheritdoc cref="MoveFileWithProgressAsync(string, string, bool, CancellationToken)"/>
+        public static Task<bool> MoveFileWithProgressAsync(string source, string destination, CancellationToken token)
+            => MoveFileWithProgressAsync(source, destination, false, token);
 
         /// <summary> Copy the file asynchronously. If the operation is successfull, delete the source file. </summary>
-        /// <inheritdoc cref="CopyFileEx.CopyFileAsync(string, string, bool, CancellationToken)"/>
-        public static async Task<bool> MoveFileAsync(string source, string destination, bool overwrite, CancellationToken token = default)
+        /// <inheritdoc cref="MoveFileWithProgressAsync(string, string, CopyProgressCallback, MoveFileOptions, CancellationToken)"/>
+        public static async Task<bool> MoveFileWithProgressAsync(string source, string destination, bool overwrite, CancellationToken token = default)
         {
             MoveFileOptions options = MoveFileOptions.COPY_ALLOWED | MoveFileOptions.WRITE_THROUGH;
             if (overwrite) options |= MoveFileOptions.REPLACE_EXISTSING;
-            return await MoveFileAsync(source, destination, flags: options, token: token).ConfigureAwait(false);
+            return await MoveFileWithProgressAsync(source, destination, null, options, token).ConfigureAwait(false);
         }
 
         /// <inheritdoc cref="MoveFileProgressAsync"/>
-        public static async Task<bool> MoveFileAsync(string source, string destination, IProgress<ProgressUpdate> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
+        public static async Task<bool> MoveFileWithProgressAsync(string source, string destination, IProgress<ProgressUpdate> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
             return await MoveFileProgressAsync(source, destination, overwrite, updateInterval, progress: progress, token: token);
         }
 
         /// <inheritdoc cref="MoveFileProgressAsync"/>
-        public static async Task<bool> MoveFileAsync(string source, string destination, IProgress<long> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
+        public static async Task<bool> MoveFileWithProgressAsync(string source, string destination, IProgress<long> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
             return await MoveFileProgressAsync(source, destination, overwrite, updateInterval, sizeProgress: progress, token: token);
         }
 
         /// <inheritdoc cref="MoveFileProgressAsync"/>
-        public static async Task<bool> MoveFileAsync(string source, string destination, IProgress<double> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
+        public static async Task<bool> MoveFileWithProgressAsync(string source, string destination, IProgress<double> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
             return await MoveFileProgressAsync(source, destination, overwrite, updateInterval, percentProgress: progress, token: token);
         }
@@ -154,7 +145,7 @@ namespace RoboSharp.Extensions.Windows
         /// <param name="progress">An IProgress object that will accept a progress notification</param>
         /// <param name="updateInterval">Time interval in milliseconds to update the <paramref name="progress"/> object</param>
         /// <returns>A task that returns when the operation has completed successfully or has been cancelled.</returns>
-        /// <inheritdoc cref="CopyFileEx.CopyFileAsync(string, string, bool, CancellationToken)"/>
+        /// <inheritdoc cref="MoveFileWithProgress(string, string, CopyProgressCallback, MoveFileOptions)"/>
         /// <param name="source"/><param name="destination"/><param name="overwrite"/><param name="token"/>
         /// <param name="percentProgress"/><param name="sizeProgress"/>
         internal static async Task<bool> MoveFileProgressAsync(
@@ -192,15 +183,15 @@ namespace RoboSharp.Extensions.Windows
 
             try
             {
-                var callback = CopyFileEx.CreateCallback(ProgressHandler, token);
+                var callback = FileFunctions.CreateCallback(ProgressHandler, token);
                 MoveFileOptions options = MoveFileOptions.COPY_ALLOWED | MoveFileOptions.WRITE_THROUGH;
                 if (overwrite) options |= MoveFileOptions.REPLACE_EXISTSING;
-                result = await MoveFileAsync(source, destination, callback, flags: options, token: token).ConfigureAwait(false);
+                result = await Task.Run(() => InvokeMoveFileWithProgress(source, destination, callback, options), token).ConfigureAwait(false);
             }
             finally
             {
                 updateToken.Cancel();
-                await updateTask.ConfigureAwait(false);
+                await updateTask.CatchCancellation(false);
             }
             Report();
             return result;

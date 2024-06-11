@@ -26,9 +26,8 @@ namespace RoboSharp.Extensions
     {
         private readonly IFileCopierFactory _copierFactory;
         private readonly List<IFileCopier> _fileCopiers;
+        private CancellationTokenSource _cancellationSource;
         private bool disposedValue;
-        private CancellationTokenSource _cancellationSource { get; set; }
-
 
         /// <summary>
         /// Create a new FileCopierCommand

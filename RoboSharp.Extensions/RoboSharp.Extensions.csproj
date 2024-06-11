@@ -10,7 +10,7 @@
           net6.0;
           net8.0;
       </TargetFrameworks>
-      <NetFrameworkRegex><![CDATA[^net4[5-8][0-2]?$]]></NetFrameworkRegex>
+      <NetFrameworkRegex><![CDATA[^net((4[5-8][0-2]?)|(.*2.0))$]]></NetFrameworkRegex>
       <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
       
       <Version>1.6.0</Version>
@@ -45,7 +45,7 @@
         <ProjectReference Include="..\RoboSharp\RoboSharp.csproj" />
         <!-- Windows NativeMethods.txt - Source Generator -->
         <AdditionalFiles Include="Windows\NativeMethods.txt" />
-        <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.49-beta">
+        <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.106">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -55,20 +55,21 @@
         <None Include="..\license" Pack="true" PackagePath="\" />
     </ItemGroup>
 
-    
     <!-- Conditional Target Requirements -->
     <Choose>
-        <!-- NetFramework -->
+        <!-- NetFramework | NetStandard 2.0 -->
         <When Condition=" $([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '$(NetFrameworkRegex)'))">
             <PropertyGroup>
-                <langversion>8.0</langversion>
+                <langversion>9</langversion>
             </PropertyGroup>
+            <ItemGroup>
+                <PackageReference Include="System.Memory" Version="4.5.5" />
+            </ItemGroup>
         </When>
-
-        <!-- NetStandard 2.0 | NetStandard 2.1 -->
-        <When Condition=" '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1' ">
+        <!-- NetStandard 2.1 -->
+        <When Condition=" '$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'netcoreapp3.1'">
             <PropertyGroup>
-                <langversion>8.0</langversion>
+                <langversion>9</langversion>
             </PropertyGroup>
         </When>
 

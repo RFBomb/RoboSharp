@@ -26,39 +26,13 @@ namespace RoboSharp.Extensions.Helpers
         }
 
 
-        /* Unmerged change from project 'RoboSharp.Extensions (net8.0)'
-        Before:
-                /// <inheritdoc cref="Helpers.SelectionOptionsExtensions.IsExtra{T}(T, T)"/>
-        After:
-                /// <inheritdoc cref="SelectionOptionsExtensions.IsExtra{T}(T, T)"/>
-        */
-        /// <inheritdoc cref="Options.SelectionOptionsExtensions.IsExtra{T}(T, T)"/>
+        /// <inheritdoc cref="Options.SelectionExtensions.IsExtra{T}(T, T)"/>
         public static bool IsExtra(this IFilePair pair)
-
-            /* Unmerged change from project 'RoboSharp.Extensions (net8.0)'
-            Before:
-                        => pair is null ? throw new ArgumentNullException(nameof(pair)) : Helpers.SelectionOptionsExtensions.IsExtra(pair.Source, pair.Destination);
-            After:
-                        => pair is null ? throw new ArgumentNullException(nameof(pair)) : SelectionOptionsExtensions.IsExtra(pair.Source, pair.Destination);
-            */
             => pair is null ? throw new ArgumentNullException(nameof(pair)) : Options.SelectionExtensions.IsExtra(pair.Source, pair.Destination);
 
 
-        /* Unmerged change from project 'RoboSharp.Extensions (net8.0)'
-        Before:
-                /// <inheritdoc cref="Helpers.SelectionOptionsExtensions.IsLonely{T}(T, T)"/>
-        After:
-                /// <inheritdoc cref="SelectionOptionsExtensions.IsLonely{T}(T, T)"/>
-        */
-        /// <inheritdoc cref="Options.SelectionOptionsExtensions.IsLonely{T}(T, T)"/>
+        /// <inheritdoc cref="Options.SelectionExtensions.IsLonely{T}(T, T)"/>
         public static bool IsLonely(this IFilePair pair)
-
-            /* Unmerged change from project 'RoboSharp.Extensions (net8.0)'
-            Before:
-                        => pair is null ? throw new ArgumentNullException(nameof(pair)) : Helpers.SelectionOptionsExtensions.IsLonely(pair.Source, pair.Destination);
-            After:
-                        => pair is null ? throw new ArgumentNullException(nameof(pair)) : SelectionOptionsExtensions.IsLonely(pair.Source, pair.Destination);
-            */
             => pair is null ? throw new ArgumentNullException(nameof(pair)) : Options.SelectionExtensions.IsLonely(pair.Source, pair.Destination);
 
         /// <summary>

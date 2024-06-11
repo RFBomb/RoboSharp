@@ -314,19 +314,19 @@ namespace RoboSharp.Extensions.Helpers
         }
 
 
-        /// <inheritdoc cref="CopyOptionsExtensions.ShouldIncludeFileName(CopyOptions, IFilePair, IEnumerable{Regex})"/>
+        /// <inheritdoc cref="CopyExtensions.ShouldIncludeFileName(CopyOptions, IFilePair, IEnumerable{Regex})"/>
         public bool ShouldIncludeFileName<T>(T pair) where T : IFilePair
         {
             return Command.CopyOptions.ShouldIncludeFileName(pair, FileFilterRegex);
         }
 
-        /// <inheritdoc cref="CopyOptionsExtensions.ShouldIncludeFileName(CopyOptions, FileInfo, IEnumerable{Regex})"/>
+        /// <inheritdoc cref="CopyExtensions.ShouldIncludeFileName(CopyOptions, FileInfo, IEnumerable{Regex})"/>
         public bool ShouldIncludeFileName(FileInfo file)
         {
             return Command.CopyOptions.ShouldIncludeFileName(file, FileFilterRegex);
         }
 
-        /// <inheritdoc cref="CopyOptionsExtensions.ShouldIncludeFileName(CopyOptions, string, IEnumerable{Regex})"/>
+        /// <inheritdoc cref="CopyExtensions.ShouldIncludeFileName(CopyOptions, string, IEnumerable{Regex})"/>
         public bool ShouldIncludeFileName(string file)
         {
             return Command.CopyOptions.ShouldIncludeFileName(file, FileFilterRegex);
@@ -336,20 +336,20 @@ namespace RoboSharp.Extensions.Helpers
 
         #region < Purge >
 
-        /// <inheritdoc cref="CopyOptionsExtensions.ShouldPurge(IRoboCommand, IProcessedFilePair)"/>
+        /// <inheritdoc cref="CopyExtensions.ShouldPurge(IRoboCommand, IProcessedFilePair)"/>
         public bool ShouldPurge(IProcessedFilePair pair)
         {
             return Command.ShouldPurge(pair);
         }
 
-        /// <inheritdoc cref="CopyOptionsExtensions.ShouldPurge(IRoboCommand, IDirectoryPair)"/>
+        /// <inheritdoc cref="CopyExtensions.ShouldPurge(IRoboCommand, IDirectoryPair)"/>
         public bool ShouldPurge(IDirectoryPair pair) => Command.ShouldPurge(pair);
 
         #endregion
 
         #region < Apply Attributes >
 
-        /// <inheritdoc cref="CopyOptionsExtensions.SetFileAttributes(CopyOptions, FileInfo)"/>
+        /// <inheritdoc cref="CopyExtensions.SetFileAttributes(CopyOptions, FileInfo)"/>
         public void ApplyAttributes(FileInfo destination)
         {
             if (FileAttributesToApply.HasValue)
@@ -358,7 +358,7 @@ namespace RoboSharp.Extensions.Helpers
                 destination.Attributes &= ~FileAttributesToRemove.Value;
         }
 
-        /// <inheritdoc cref="CopyOptionsExtensions.SetFileAttributes(CopyOptions, FileInfo)"/>
+        /// <inheritdoc cref="CopyExtensions.SetFileAttributes(CopyOptions, FileInfo)"/>
         public void ApplyAttributes(IFilePair pair)
             => ApplyAttributes(pair.Destination);
 

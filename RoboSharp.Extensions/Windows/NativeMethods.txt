@@ -1,11 +1,11 @@
 ﻿CopyFileEx
-MoveFileWithProgressA
+MoveFileWithProgressW
 
 CreateSymbolicLink
 PathRelativePathToW
 
 CreateFile
-GENERIC_READ
+GENERIC_ACCESS_RIGHTS
 
 DeviceIoControl
 FSCTL_GET_REPARSE_POINT

@@ -1,5 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RoboSharp.Extensions;
+using RoboSharp.Extensions.Tests;
 using RoboSharp.Extensions.Windows;
 using System;
 using System.IO;
@@ -7,12 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using static RoboSharp.Extensions.Tests.AssertExtensions;
 
-namespace RoboSharp.Extensions.Tests
+namespace RoboSharp.Extensions.Windows.UnitTests
 {
     [TestClass()]
     public class CopyFileExTests
     {
-        private static string GetRandomPath(bool inSubFolder = false) => TestPrep.GetRandomPath(inSubFolder); 
+        private static string GetRandomPath(bool inSubFolder = false) => TestPrep.GetRandomPath(inSubFolder);
 
         [TestMethod]
         public void TestCancellationTokens()
@@ -42,7 +42,7 @@ namespace RoboSharp.Extensions.Tests
             string sourceFile = GetRandomPath();
             string destFile = GetRandomPath(true);
             string destFolder = Path.GetDirectoryName(destFile);
-            
+
             try
             {
                 Console.WriteLine(string.Format("Source: {0}\nDestination: {1}", sourceFile, destFile));
@@ -73,7 +73,7 @@ namespace RoboSharp.Extensions.Tests
             try
             {
                 Console.WriteLine(string.Format("Source: {0}\nDestination: {1}", sourceFile, destFile));
-                
+
                 // Source Missing Test
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
                 Assert.ThrowsException<FileNotFoundException>(() => FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS));
@@ -85,8 +85,8 @@ namespace RoboSharp.Extensions.Tests
                 Assert.IsTrue(File.Exists(destFile));
 
                 // Fail_If_Exists -- Overwrite
-                Assert.ThrowsException<IOException>(() => FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set"); 
-                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set"); 
+                Assert.ThrowsException<IOException>(() => FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.FAIL_IF_EXISTS), "\nCopy Operation Succeeded when CopyFileExOptions.FAIL_IF_EXISTS was set");
+                Assert.IsTrue(FileFunctions.CopyFile(sourceFile, destFile, CopyFileExOptions.NONE), "\n Copy Operation Failed when CopyFileExOptions.NONE was set");
 
                 // Cancellation
                 var cancelCallback = FileFunctions.CreateCallback((long a, long b) =>
@@ -293,7 +293,7 @@ namespace RoboSharp.Extensions.Tests
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, GetTimedToken()), assertMessage);
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => FileFunctions.CopyFileAsync(sourceFile, destFile, progSize, 100, false, GetTimedToken()), assertMessage);
                 // These progress report assertions are to check that the operation STARTED but was cancelled prior to completion, causing deletion because Restartable mode was not used.
-                Assert.IsTrue(progFullUpdated, "Full Progress object never reported"); 
+                Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
                 Assert.IsFalse(File.Exists(destFile));

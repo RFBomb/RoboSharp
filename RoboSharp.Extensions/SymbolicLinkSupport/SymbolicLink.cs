@@ -59,6 +59,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             [In] string pszTo,
             [In] FileAttributes dwAttrTo);
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "ThrowIfNotWindows")]
         public static void CreateSymbolicLink(string linkPath, string targetPath, bool isDirectory, bool makeTargetPathRelative = false)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);

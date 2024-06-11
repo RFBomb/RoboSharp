@@ -216,7 +216,7 @@ namespace RoboSharp.Extensions
         /// If the operation is in progress, cancel the operation.
         /// </summary>
         /// <returns>Returns when the Copy/Move operation is no long executing</returns>
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
         public async Task DisposeAsync()
 #else
         public async ValueTask DisposeAsync()

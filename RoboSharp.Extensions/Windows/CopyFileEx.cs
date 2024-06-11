@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using RoboSharp.Extensions.Windows;
 using System.Text;
 using RoboSharp.Extensions.Helpers;
+using static RoboSharp.Extensions.Windows.FileFunctions;
+using Windows.Win32.Storage.FileSystem;
 
 namespace RoboSharp.Extensions.Windows
 {
@@ -170,9 +172,10 @@ namespace RoboSharp.Extensions.Windows
                         //Writer - consumes a thread while not paused
                         try
                         {
+                            LPPROGRESS_ROUTINE callback = CreateCallback(progressRecorder);
                             copied = await Task.Run(() =>
                             {
-                                var result = CopyFileEx.InvokeCopyFileEx(Source.FullName, Destination.FullName, progressRecorder, options);
+                                var result = CopyFileEx.InvokeCopyFileEx(Source.FullName, Destination.FullName, callback, options);
                                 if (!result) Win32Error.ThrowLastError(Source.FullName, Destination.FullName);
                                 return result;
                             }, _cancellationSource.Token).ConfigureAwait(false);
@@ -190,9 +193,6 @@ namespace RoboSharp.Extensions.Windows
                 SetEnded(copied);
             }
             return IsCopied;
-
-            // Helper Routines
-            double CalcProgress() => (double)100 * totalBytesTransferred / fileSize;
 
             CopyProgressCallbackResult progressRecorder(long totalFileSize, long byteCount, long streamSize, long streamBytesTransferred, uint streamID, CopyProgressCallbackReason reason)
             {
@@ -213,7 +213,7 @@ namespace RoboSharp.Extensions.Windows
             {
                 while (totalBytesTransferred < Source.Length)
                 {
-                    if (!IsPaused) OnProgressUpdated(CalcProgress());
+                    if (!IsPaused) OnProgressUpdated((double)100 * totalBytesTransferred / fileSize);
                     _cancellationSource.Token.ThrowIfCancellationRequested();
                     await Task.Delay(100, _cancellationSource.Token);
                 }
@@ -221,7 +221,7 @@ namespace RoboSharp.Extensions.Windows
         }
 
 
-        /// <inheritdoc cref="FileFunctions.MoveFileAsync(string, string, IProgress{double}, int, bool, CancellationToken)"/>
+        /// <inheritdoc cref="FileFunctions.MoveFileWithProgressAsync(string, string, IProgress{double}, int, bool, CancellationToken)"/>
         public override async Task<bool> MoveAsync(bool overWrite, CancellationToken token)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(CopyFileEx));
@@ -253,7 +253,7 @@ namespace RoboSharp.Extensions.Windows
                 }
                 else
                 {
-                    moved = await FileFunctions.MoveFileAsync(Source.FullName, Destination.FullName, new Progress<double>(OnProgressUpdated), 100, overWrite, _cancellationSource.Token);
+                    moved = await FileFunctions.MoveFileWithProgressAsync(Source.FullName, Destination.FullName, new Progress<double>(OnProgressUpdated), 100, overWrite, _cancellationSource.Token);
                 }
             }
             finally

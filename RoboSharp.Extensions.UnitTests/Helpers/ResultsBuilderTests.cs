@@ -1,5 +1,4 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RoboSharp;
 using RoboSharp.Interfaces;
 using RoboSharp.UnitTests;
 using System;
@@ -9,18 +8,17 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using RoboSharp.Extensions.Helpers;
 
-namespace RoboSharp.Extensions.Tests
+namespace RoboSharp.Extensions.Helpers.UnitTests
 {
     [TestClass()]
     public class ResultsBuilderTests
     {
-        private static (IRoboCommand cmd , ResultsBuilder builder) GetBuilder()
+        private static (IRoboCommand cmd, ResultsBuilder builder) GetBuilder()
         {
             var cmd = new RoboCommand()
             {
-                Configuration = new RoboSharpConfiguration() {  EnableFileLogging = true},
+                Configuration = new RoboSharpConfiguration() { EnableFileLogging = true },
                 LoggingOptions = new LoggingOptions()
                 {
                     NoJobSummary = true,
@@ -29,7 +27,7 @@ namespace RoboSharp.Extensions.Tests
                     NoFileList = false,
                 }
             };
-            return (cmd , new ResultsBuilder(cmd));
+            return (cmd, new ResultsBuilder(cmd));
         }
 
         [TestMethod()]
