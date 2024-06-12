@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using RoboSharp.Extensions.Windows;
 
 namespace RoboSharp.Extensions.SymbolicLinkSupport
 {
@@ -33,7 +32,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 #if NET6_0_OR_GREATER
             return info.LinkTarget != null;
 #else
-            return SymbolicLink.GetLinkTarget(info.FullName) != null;
+            return info.Attributes.HasFlag(FileAttributes.ReparsePoint);
 #endif
         }
 
@@ -44,7 +43,6 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// <returns><see langword="true"/> if the <paramref name="info"/> target exists, otherwise <see langword="false"/>.</returns>
         public static bool TargetExists(this FileSystemInfo info)
         {
-
             if (info is null) throw new ArgumentNullException(nameof(info));
             if (info is FileInfo file)
                 return File.Exists(GetSymbolicLinkTarget(file));
@@ -65,7 +63,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 #else
             if (!info.IsSymbolicLink())
                 return info.FullName;
-            return SymbolicLink.GetLinkTarget(info.FullName);
+            return SymbolicLink.GetLinkTarget(info.FullName, info is DirectoryInfo);
 #endif
         }
     }

@@ -8,6 +8,7 @@ using Microsoft.Win32.SafeHandles;
 using MSWindows = Windows;
 using Win32 = Windows.Win32;
 using REPARSE_DATA_BUFFER = Windows.Wdk.Storage.FileSystem.REPARSE_DATA_BUFFER;
+using Windows.Win32.Storage.FileSystem;
 
 
 namespace RoboSharp.Extensions.SymbolicLinkSupport
@@ -111,10 +112,10 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         }
 
-        public static string GetLinkTarget(string path)
+        internal static string GetLinkTarget(string path, bool asDirectory)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path, asDirectory);
             if (reparseData is null) return null;
             var reparseDataBuffer = reparseData.Value;
             if (reparseDataBuffer.ReparseTag != Win32.PInvoke.IO_REPARSE_TAG_SYMLINK)
@@ -127,13 +128,11 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// <summary>
         /// Valid only for Directories
         /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
-        public static string GetJunctionTarget(string path)
+        internal static string GetJunctionTarget(string path, bool asDirectory)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
             if (!Directory.Exists(path)) return null;
-            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path, asDirectory);
             if (reparseData is null) return null;
             var reparseDataBuffer = reparseData.Value;
             if (reparseDataBuffer.ReparseTag != Win32.PInvoke.IO_REPARSE_TAG_MOUNT_POINT)
@@ -143,15 +142,15 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             return GetTargetFromReparseData(reparseDataBuffer, path);
         }
 
-        public static bool IsJunctionPoint(string path)
+        internal static bool IsJunctionPoint(string path, bool asDirectory)
         {
-            return GetJunctionTarget(path) != null;
+            return GetJunctionTarget(path, asDirectory) != null;
         }
 
-        public static bool IsJunctionOrSymbolic(string path)
+        internal static bool IsJunctionOrSymbolic(string path, bool asDirectory)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path);
+            REPARSE_DATA_BUFFER? reparseData = GetReparseData(path, asDirectory);
             if (reparseData is null) return false;
             REPARSE_DATA_BUFFER data = reparseData.Value;
             if (data.ReparseTag == symLinkTag | data.ReparseTag == junctionPointTag)
@@ -196,21 +195,27 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "Throws if not windows platform")]
-        private unsafe static REPARSE_DATA_BUFFER? GetReparseData(string path)
+        private unsafe static REPARSE_DATA_BUFFER? GetReparseData(string path, bool asDirectory)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+
+            const FILE_FLAGS_AND_ATTRIBUTES dirAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_DIRECTORY | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_REPARSE_POINT;
+            const FILE_FLAGS_AND_ATTRIBUTES fileAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT;
+
             using SafeFileHandle fileHandle = Win32.PInvoke.CreateFile(
                     lpFileName: path,
                     dwDesiredAccess: (uint)Win32.Foundation.GENERIC_ACCESS_RIGHTS.GENERIC_READ,
-                    dwShareMode: Win32.Storage.FileSystem.FILE_SHARE_MODE.FILE_SHARE_READ | Win32.Storage.FileSystem.FILE_SHARE_MODE.FILE_SHARE_WRITE,
+                    dwShareMode: FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE,
                     lpSecurityAttributes: default,
-                    dwCreationDisposition: Win32.Storage.FileSystem.FILE_CREATION_DISPOSITION.OPEN_EXISTING,
-                    dwFlagsAndAttributes: Win32.Storage.FileSystem.FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT,
+                    dwCreationDisposition: FILE_CREATION_DISPOSITION.OPEN_EXISTING,
+                    dwFlagsAndAttributes: asDirectory ? dirAttr : fileAttr,
                     hTemplateFile: default);
 
             if (fileHandle.IsInvalid)
             {
-                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                var err = Marshal.GetLastWin32Error();
+                if (err != 0) // OPERATION COMPLETED SUCCESSFULLY
+                    Marshal.ThrowExceptionForHR(err);
             }
             int outBufferSize = Marshal.SizeOf<REPARSE_DATA_BUFFER>();
             IntPtr outputBuffer = Marshal.AllocHGlobal(outBufferSize);
@@ -220,7 +225,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
                 // https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-deviceiocontrol
                 // https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_reparse_point
-                bool success = Win32.PInvoke.DeviceIoControl(fileHandle, Win32.PInvoke.FSCTL_GET_REPARSE_POINT, null, 0U,
+                bool success = Win32.PInvoke.DeviceIoControl(fileHandle, asDirectory? Win32.PInvoke.IO_REPARSE_TAG_SYMLINK :  Win32.PInvoke.FSCTL_GET_REPARSE_POINT, null, 0U,
                     lpOutBuffer: outputBuffer.ToPointer(),
                     nOutBufferSize: (uint)outBufferSize,
                     lpBytesReturned: bytesReturned,

@@ -230,7 +230,6 @@ namespace RoboSharp.Extensions
                     //if (copier.Parent.ProcessedFileInfo is null)
                     //    copier.Parent.ProcessedFileInfo = new ProcessedFileInfo(Path.GetDirectoryName(copier.Source.FullName), FileClassType.NewDir, this.Configuration.GetDirectoryClass(ProcessedDirectoryFlag.NewDir), 1);
 
-                    resultsBuilder.AddFile(copier.ProcessedFileInfo);
                     RaiseOnFileProcessed(copier.ProcessedFileInfo);
 
                     //Check if it can copy, or if there is a need to copy.
@@ -242,6 +241,10 @@ namespace RoboSharp.Extensions
                         copyTask = PerformCopyOperation(copier, move, true, retries, retryWaitTime, resultsBuilder);
                         resultsBuilder.ProgressEstimator.SetCopyOpStarted();
                         queue.Add(copyTask);
+                    }
+                    else
+                    {
+                        resultsBuilder.AddFile(copier.ProcessedFileInfo); // add the (likely skipped) file to the log
                     }
 
                     // wait for copy operations to do their thing, up to the max multithreaded copies count

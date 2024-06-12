@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.VisualBasic;
 using RoboSharp.Extensions.Helpers;
 using RoboSharp.Extensions.SymbolicLinkSupport;
 
@@ -531,7 +532,7 @@ namespace RoboSharp.Extensions.Options
 #if NET6_0_OR_GREATER
                 return new DirectoryInfo(directory).IsSymbolicLink();
 #else
-                return SymbolicLink.IsJunctionOrSymbolic(directory);
+                return File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint);
 #endif
             else
                 return false;

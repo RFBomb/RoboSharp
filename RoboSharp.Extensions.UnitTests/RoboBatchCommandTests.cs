@@ -19,16 +19,25 @@ namespace RoboSharp.Extensions.Tests
         [TestMethod]
         public async Task TestCopyOperation()
         {
-            Test_Setup.ClearOutTestDestination();
-            var source = Test_Setup.GenerateCommand(true, false);
-            var root = new DirectoryPair(source.CopyOptions.Source, TestPrep.AppDataFolder);
-            var files = root.EnumerateSourceFilePairs(FilePair.CreatePair);
-            var cmd = new RoboBatchCommand(new StreamedCopierFactory());
-            cmd.Configuration.EnableFileLogging = true;
-            cmd.AddCopiers(files);
-            var results = await Test_Setup.RunTest(cmd);
-            Test_Setup.WriteLogLines(results.Results);
-            Assert.AreEqual(files.Count(), results.Results.FilesStatistic.Copied); // expect 4
+            string destination = TestPrep.GetRandomPath(true);
+            try
+            {
+                Test_Setup.ClearOutTestDestination();
+                var source = Test_Setup.GenerateCommand(true, false);
+                var root = new DirectoryPair(source.CopyOptions.Source, destination);
+                var files = root.EnumerateSourceFilePairs(FilePair.CreatePair).ToArray();
+                var cmd = new RoboBatchCommand(new StreamedCopierFactory());
+                cmd.LoggingOptions.IncludeFullPathNames = true;
+                cmd.Configuration.EnableFileLogging = true;
+                cmd.AddCopiers(files);
+                var results = await Test_Setup.RunTest(cmd);
+                Test_Setup.WriteLogLines(results.Results);
+                Assert.AreEqual(files.Count(), results.Results.FilesStatistic.Copied); // expect 4
+            }
+            finally
+            {
+                Directory.Delete(destination, true);
+            }
         }
         
         [TestMethod]
@@ -44,11 +53,18 @@ namespace RoboSharp.Extensions.Tests
             cmd.Configuration.EnableFileLogging = true;
             cmd.AddCopiers(files);
 
-            cmd.OnFileProcessed += (o, e) => cmd.Stop(); // Simulates cancellating via a UI by cancelling AFTER it was started
+
+            // Simulates cancellating via a UI by cancelling AFTER it was started
+            cmd.OnCopyProgressChanged += (o, e) =>
+            {
+                if (e.CurrentFileProgress == 100)
+                    cmd.Stop();
+            };
+
             var results = await Test_Setup.RunTest(cmd);
             Assert.IsTrue(results.Results.Status.WasCancelled);
             var numCopied = results.Results.FilesStatistic.Copied;
-            Assert.IsTrue(numCopied < 4 && numCopied > 0);
+            Assert.IsTrue(numCopied < 4 && numCopied > 0, $"number copied : {numCopied}");
         }
     }
 }
