@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace RoboSharp.Extensions.Tests
 {
     [TestClass]
-    public class RoboBatchCommandTests
+    public class BatchCommandTests
     {
         [TestMethod]
         public async Task TestCopyOperation()
@@ -26,7 +26,7 @@ namespace RoboSharp.Extensions.Tests
                 var source = Test_Setup.GenerateCommand(true, false);
                 var root = new DirectoryPair(source.CopyOptions.Source, destination);
                 var files = root.EnumerateSourceFilePairs(FilePair.CreatePair).ToArray();
-                var cmd = new RoboBatchCommand(new StreamedCopierFactory());
+                var cmd = new BatchCommand(new StreamedCopierFactory());
                 cmd.LoggingOptions.IncludeFullPathNames = true;
                 cmd.Configuration.EnableFileLogging = true;
                 cmd.AddCopiers(files);
@@ -49,7 +49,7 @@ namespace RoboSharp.Extensions.Tests
             var source = Test_Setup.GenerateCommand(true, false);
             var root = new DirectoryPair(source.CopyOptions.Source, source.CopyOptions.Destination);
             var files = root.EnumerateSourceFilePairs(FilePair.CreatePair);
-            var cmd = new RoboBatchCommand(new StreamedCopierFactory());
+            var cmd = new BatchCommand(new StreamedCopierFactory());
             cmd.Configuration.EnableFileLogging = true;
             cmd.AddCopiers(files);
 
