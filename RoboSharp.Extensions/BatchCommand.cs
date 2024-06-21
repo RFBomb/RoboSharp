@@ -22,7 +22,7 @@ namespace RoboSharp.Extensions
     /// <br/> - SelectionOptions is not implemented because the list of files to copy/move are explicitly passed in.
     /// <br/> - JobOptions is not implemented.
     /// </remarks>
-    public class RoboBatchCommand : AbstractIRoboCommand, INotifyPropertyChanged, IRoboCommand, IEnumerable<IFileCopier>, IDisposable
+    public class BatchCommand : AbstractIRoboCommand, INotifyPropertyChanged, IRoboCommand, IEnumerable<IFileCopier>, IDisposable
     {
         private readonly IFileCopierFactory _copierFactory;
         private readonly List<IFileCopier> _fileCopiers;
@@ -32,8 +32,8 @@ namespace RoboSharp.Extensions
         /// <summary>
         /// Create a new FileCopierCommand
         /// </summary>
-        /// <param name="copierFactory">The factory used to create additional copiers</param>
-        public RoboBatchCommand(IFileCopierFactory copierFactory) : base()
+        /// <param name="copierFactory">The factory used to create additional copiers</param>`
+        public BatchCommand(IFileCopierFactory copierFactory) : base()
         {
             if (copierFactory is null) throw new ArgumentNullException(nameof(copierFactory));
             _copierFactory = copierFactory;
@@ -46,13 +46,13 @@ namespace RoboSharp.Extensions
         /// </summary>
         /// <param name="copierFactory">The factory used to create additional copiers</param>
         /// <param name="copiers">the collection of copiers to queue</param>
-        public RoboBatchCommand(IFileCopierFactory copierFactory, params IFileCopier[] copiers) : this(copierFactory)
+        public BatchCommand(IFileCopierFactory copierFactory, params IFileCopier[] copiers) : this(copierFactory)
         {
             AddCopiers(copiers);
         }
 
-        /// <inheritdoc cref="RoboBatchCommand.RoboBatchCommand(IFileCopierFactory, IFileCopier[])"/>
-        public RoboBatchCommand(IFileCopierFactory copierFactory, IEnumerable<IFileCopier> copiers) : this(copierFactory)
+        /// <inheritdoc cref="BatchCommand.BatchCommand(IFileCopierFactory, IFileCopier[])"/>
+        public BatchCommand(IFileCopierFactory copierFactory, IEnumerable<IFileCopier> copiers) : this(copierFactory)
         {
             AddCopiers(copiers);
         }
@@ -205,7 +205,7 @@ namespace RoboSharp.Extensions
         /// <inheritdoc/>
         public override Task Start(string domain = "", string username = "", string password = "")
         {
-            if (disposedValue) throw new ObjectDisposedException(nameof(RoboBatchCommand));
+            if (disposedValue) throw new ObjectDisposedException(nameof(BatchCommand));
             if (IsRunning) throw new InvalidOperationException("Already Running!");
             IsCancelled = false;
             IsRunning = true;
@@ -230,6 +230,7 @@ namespace RoboSharp.Extensions
                     //if (copier.Parent.ProcessedFileInfo is null)
                     //    copier.Parent.ProcessedFileInfo = new ProcessedFileInfo(Path.GetDirectoryName(copier.Source.FullName), FileClassType.NewDir, this.Configuration.GetDirectoryClass(ProcessedDirectoryFlag.NewDir), 1);
 
+                    resultsBuilder.AddFile(copier.ProcessedFileInfo);
                     RaiseOnFileProcessed(copier.ProcessedFileInfo);
 
                     //Check if it can copy, or if there is a need to copy.
@@ -241,10 +242,6 @@ namespace RoboSharp.Extensions
                         copyTask = PerformCopyOperation(copier, move, true, retries, retryWaitTime, resultsBuilder);
                         resultsBuilder.ProgressEstimator.SetCopyOpStarted();
                         queue.Add(copyTask);
-                    }
-                    else
-                    {
-                        resultsBuilder.AddFile(copier.ProcessedFileInfo); // add the (likely skipped) file to the log
                     }
 
                     // wait for copy operations to do their thing, up to the max multithreaded copies count
@@ -313,7 +310,7 @@ namespace RoboSharp.Extensions
                             success = true;
                             resultsBuilder.AverageSpeed.Average(new RoboSharp.Results.SpeedStatistic(copier.Destination.Length, copier.EndDate - copier.StartDate));
                         }
-                        resultsBuilder.AddFileCopied(copier.ProcessedFileInfo);
+                        resultsBuilder.ProgressEstimator.AddFileCopied(copier.ProcessedFileInfo); // Add directly to results, already written to logs
                     }
                     catch (OperationCanceledException)
                     {
