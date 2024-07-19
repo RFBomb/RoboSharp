@@ -218,7 +218,7 @@ namespace RoboSharp.Extensions.Windows
 
             void Report()
             {
-                progress?.Report(new ProgressUpdate(fileSize, totalBytesRead));
+                progress?.Report(new ProgressUpdate(fileSize, totalBytesRead, source, destination));
                 sizeProgress?.Report(totalBytesRead);
                 percentProgress?.Report((double)100 * totalBytesRead / fileSize);
             }

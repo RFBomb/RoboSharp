@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace RoboSharp.Extensions.Windows
+namespace RoboSharp.Extensions
 {
     /// <summary>
     /// Provides details about a copy operation's progress. For use with <see cref="IProgress{T}"/>
@@ -12,9 +12,7 @@ namespace RoboSharp.Extensions.Windows
         /// <summary>
         /// The default constructor - Calculates the Progress
         /// </summary>
-        /// <param name="fileSize"></param>
-        /// <param name="bytesCopied"></param>
-        public ProgressUpdate(long fileSize, long bytesCopied)
+        public ProgressUpdate(long fileSize, long bytesCopied, string source, string destination)
         {
             TotalBytes = fileSize;
             BytesCopied = bytesCopied;
@@ -24,7 +22,19 @@ namespace RoboSharp.Extensions.Windows
                 Progress = (double)100 * bytesCopied / fileSize;
             else
                 Progress = 0;
+            Source = source;
+            Destination = destination;
         }
+
+        /// <summary>
+        /// The source file path
+        /// </summary>
+        public string Source { get; }
+
+        /// <summary>
+        /// The destination file path
+        /// </summary>
+        public string Destination { get; }
 
         /// <summary>
         /// The current progress expressed as a percentage
