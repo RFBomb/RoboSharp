@@ -308,7 +308,7 @@ namespace RoboSharp.Extensions
                             else
                                 await copier.CopyAsync(overWrite);
                             success = true;
-                            resultsBuilder.AverageSpeed.Average(new RoboSharp.Results.SpeedStatistic(copier.Destination.Length, copier.EndDate - copier.StartDate));
+                            resultsBuilder.AverageSpeed.Average(copier.Destination.Length, copier.EndDate - copier.StartDate);
                         }
                         resultsBuilder.ProgressEstimator.AddFileCopied(copier.ProcessedFileInfo); // Add directly to results, already written to logs
                     }
