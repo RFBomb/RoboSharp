@@ -14,6 +14,14 @@ namespace RoboSharp.Extensions.Windows.UnitTests
     {
         private static string GetRandomPath(bool inSubFolder = false) => TestPrep.GetRandomPath(inSubFolder);
 
+        private void CreateDummyFile(string filePath, int length)
+        {
+            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                fileStream.Write(new byte[length], 0, length);
+            }
+        }
+
         [TestMethod]
         public void TestCancellationTokens()
         {
@@ -262,7 +270,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsFalse(progFullUpdated | progSizeUpdated | progPercentUpdated);
 
-                File.WriteAllText(sourceFile, "Test Contents");
+                CreateDummyFile(sourceFile, 3 * 1024 * 1024);
                 File.WriteAllText(destFile, "Content to replace");
                 Assert.IsTrue(File.Exists(sourceFile));
                 Assert.IsTrue(File.Exists(destFile));
@@ -284,12 +292,15 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
+                await Task.Delay(30);
                 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
-                
+                await Task.Delay(30);
+
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
+                await Task.Delay(30);
 
                 // Cancellation Prior to write
                 assertMessage = "\n Cancellation Test";

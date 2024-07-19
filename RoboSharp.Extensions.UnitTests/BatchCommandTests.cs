@@ -48,19 +48,20 @@ namespace RoboSharp.Extensions.Tests
             Test_Setup.ClearOutTestDestination();
             var source = Test_Setup.GenerateCommand(true, false);
             var root = new DirectoryPair(source.CopyOptions.Source, source.CopyOptions.Destination);
-            var files = root.EnumerateSourceFilePairs(FilePair.CreatePair);
+            var files = root.EnumerateSourceFilePairs(FilePair.CreatePair).ToArray();
             var cmd = new BatchCommand(new StreamedCopierFactory());
             cmd.Configuration.EnableFileLogging = true;
+            cmd.LoggingOptions.NoFileList = false;
             cmd.AddCopiers(files);
-
 
             // Simulates cancellating via a UI by cancelling AFTER it was started
             cmd.OnCopyProgressChanged += (o, e) =>
             {
-                //if (e.CurrentFileProgress == 100)
+                if (e.CurrentFileProgress == 100)
                     cmd.Stop();
             };
 
+            cmd.OnError += (o, e) => Console.WriteLine(e.Error);
             var results = await Test_Setup.RunTest(cmd);
             Test_Setup.WriteLogLines(results.Results);
             Assert.IsTrue(results.Results.Status.WasCancelled, "Results.Status.WasCancelled flag not set!");

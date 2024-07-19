@@ -320,7 +320,7 @@ namespace RoboSharp.Extensions
                     }
                     catch (Exception e)
                     {
-                        resultsBuilder.AddFileFailed(copier.ProcessedFileInfo);
+                        resultsBuilder.AddFileFailed(copier.ProcessedFileInfo, e);
                         RaiseOnError(new ErrorEventArgs(e, copier.Destination.FullName, DateTime.Now));
                         if (tries < numberOfRetries) await Task.Delay(retryWaitTime);
                     }
