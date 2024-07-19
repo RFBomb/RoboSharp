@@ -225,13 +225,13 @@ namespace RoboSharp.Extensions
 
                 foreach (IFileCopier copier in _fileCopiers)
                 {
+                    if (_cancellationSource.IsCancellationRequested) 
+                        break;
+
                     copier.Destination.Refresh();
                     copier.ShouldCopy = evaluator.ShouldCopyFile(copier);
                     //if (copier.Parent.ProcessedFileInfo is null)
                     //    copier.Parent.ProcessedFileInfo = new ProcessedFileInfo(Path.GetDirectoryName(copier.Source.FullName), FileClassType.NewDir, this.Configuration.GetDirectoryClass(ProcessedDirectoryFlag.NewDir), 1);
-
-                    resultsBuilder.AddFile(copier.ProcessedFileInfo);
-                    RaiseOnFileProcessed(copier.ProcessedFileInfo);
 
                     //Check if it can copy, or if there is a need to copy.
                     bool canCopy = !copier.IsExtra() && (copier.IsLonely() || !(copier.IsSameDate() && copier.Source.Length == copier.Destination.Length));
@@ -240,9 +240,13 @@ namespace RoboSharp.Extensions
                     if (canCopy)
                     {
                         copyTask = PerformCopyOperation(copier, move, true, retries, retryWaitTime, resultsBuilder);
-                        resultsBuilder.ProgressEstimator.SetCopyOpStarted();
                         queue.Add(copyTask);
                     }
+                    else
+                    {
+                        resultsBuilder.AddFile(copier.ProcessedFileInfo);    
+                    }
+                    RaiseOnFileProcessed(copier.ProcessedFileInfo);
 
                     // wait for copy operations to do their thing, up to the max multithreaded copies count
                     bool wasPaused = false;
@@ -250,7 +254,7 @@ namespace RoboSharp.Extensions
                     {
                         if (_cancellationSource.IsCancellationRequested)
                         {
-                            throw new TaskCanceledException();
+                            break;
                         }
                         else if (IsPaused)
                         {
@@ -260,12 +264,10 @@ namespace RoboSharp.Extensions
                         {
                             wasPaused = false;
                         }
-                        await Task.Delay(100);
+                        await Task.Delay(100, _cancellationSource.Token).CatchCancellation(false);
                     }
-
                 }
-
-                await Task.WhenAll(queue);
+                await Task.WhenAll(queue).CatchCancellation(false);
             }, _cancellationSource.Token);
 
             return moveOp.ContinueWith(MoveOpContinuation).Unwrap();
@@ -304,9 +306,9 @@ namespace RoboSharp.Extensions
                         {
                             copier.Destination.Directory.Create();
                             if (isMoving)
-                                await copier.MoveAsync(overWrite);
+                                await copier.MoveAsync(overWrite, _cancellationSource.Token);
                             else
-                                await copier.CopyAsync(overWrite);
+                                await copier.CopyAsync(overWrite, _cancellationSource.Token);
                             success = true;
                             resultsBuilder.AverageSpeed.Average(copier.Destination.Length, copier.EndDate - copier.StartDate);
                         }

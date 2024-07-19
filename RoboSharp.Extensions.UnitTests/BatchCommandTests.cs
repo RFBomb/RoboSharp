@@ -57,12 +57,13 @@ namespace RoboSharp.Extensions.Tests
             // Simulates cancellating via a UI by cancelling AFTER it was started
             cmd.OnCopyProgressChanged += (o, e) =>
             {
-                if (e.CurrentFileProgress == 100)
+                //if (e.CurrentFileProgress == 100)
                     cmd.Stop();
             };
 
             var results = await Test_Setup.RunTest(cmd);
-            Assert.IsTrue(results.Results.Status.WasCancelled);
+            Test_Setup.WriteLogLines(results.Results);
+            Assert.IsTrue(results.Results.Status.WasCancelled, "Results.Status.WasCancelled flag not set!");
             var numCopied = results.Results.FilesStatistic.Copied;
             Assert.IsTrue(numCopied < 4 && numCopied > 0, $"number copied : {numCopied}");
         }

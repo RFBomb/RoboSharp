@@ -281,12 +281,15 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 progFullUpdated = false;
                 assertMessage = "\n Allow Overwrite Test";
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, true), assertMessage);
+                
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, true), assertMessage);
-                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
-                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
-                Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
+                
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
+                
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
+                Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
 
                 // Cancellation Prior to write
                 assertMessage = "\n Cancellation Test";
