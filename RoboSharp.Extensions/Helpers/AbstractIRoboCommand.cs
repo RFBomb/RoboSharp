@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -65,7 +65,7 @@ namespace RoboSharp.Extensions.Helpers
         /// Create a new RoboCommand with identical options of the supplied IRoboCommand
         /// </summary>
         /// <param name="command">RoboCommand that provides the options to clone</param>
-        public AbstractIRoboCommand(IRoboCommand command)
+        protected AbstractIRoboCommand(IRoboCommand command)
         {
             Name = command.Name;
             StopIfDisposing = command.StopIfDisposing;
