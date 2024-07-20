@@ -223,12 +223,24 @@ namespace RoboSharp
             return sanitizer.ToString();
         }
 
-        /// <summary> Encase the LogPath in quotes if needed </summary>
+        /// <summary> Encase the <paramref name="pathToWrap"/> in quotes if needed </summary>
         /// <inheritdoc cref="AppendWrappedPath(StringBuilder, string)"/>
         [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-        internal static StringBuilder WrapPath(this string pathToWrap)
+        internal static string WrapPath(this string pathToWrap)
         {
-            return new StringBuilder().AppendWrappedPath(pathToWrap);
+            if (string.IsNullOrWhiteSpace(pathToWrap)) return string.Empty;
+            var trimmedPath = pathToWrap.Trim();
+            if (trimmedPath.Length > 3 && trimmedPath[0] == '"' && trimmedPath.EndsWith('"'))
+            {
+                return trimmedPath;
+            }else if (trimmedPath.Any(Char.IsWhiteSpace))
+            {
+                return $@"""{trimmedPath.TrimEnd('\\', '/')}""";
+            }
+            else
+            {
+                return trimmedPath;
+            }
         }
 
         /// <summary> 

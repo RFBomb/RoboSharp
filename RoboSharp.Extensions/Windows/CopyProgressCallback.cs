@@ -184,13 +184,16 @@ namespace RoboSharp.Extensions.Windows
         /// </summary>
         /// <param name="progress">The object to report progress to</param>
         /// <param name="token">Token used to determine if the copy operation should be cancelled.</param>
+        /// <param name="source">Source information for the <see cref="ProgressUpdate"/> objects</param>
+        /// <param name="destination">Destination information for the <see cref="ProgressUpdate"/> objects</param>
         /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(IProgress<ProgressUpdate> progress, CancellationToken token = default)
+        /// <remarks>Source and Destination information are not provided by the CopyFileEx or MoveFileWithProgress callbacks, so it must be supplied here if desired.</remarks>
+        public static CopyProgressCallback CreateCallback(IProgress<ProgressUpdate> progress, string source = "", string destination = "", CancellationToken token = default)
         {
             if (progress is null && !token.CanBeCanceled) return null;
             return new CopyProgressCallback((total, processed, _, _, _, _) =>
             {
-                progress.Report(new ProgressUpdate(total, processed));
+                progress.Report(new ProgressUpdate(total, processed, source, destination));
                 return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE;
             });
         }
@@ -200,21 +203,24 @@ namespace RoboSharp.Extensions.Windows
         /// </summary>
         /// <param name="progress">The object to report progress to</param>
         /// <param name="token">Token used to determine if the copy operation should be cancelled.</param>
-        /// <returns>A new <see cref="CopyProgressCallback"/></returns>
-        public static CopyProgressCallback CreateCallback(Func<ProgressUpdate, CopyProgressCallbackResult> progress, CancellationToken token = default)
+        /// <param name="source">Source information for the <see cref="ProgressUpdate"/> objects</param>
+        /// <param name="destination">Destination information for the <see cref="ProgressUpdate"/> objects</param>
+        /// <returns>A new <see cref="CopyProgressCallback"/></returns>\
+        /// <remarks>Source and Destination information are not provided by the CopyFileEx or MoveFileWithProgress callbacks, so it must be supplied here if desired.</remarks>
+        public static CopyProgressCallback CreateCallback(Func<ProgressUpdate, CopyProgressCallbackResult> progress, string source = "", string destination = "", CancellationToken token = default)
         {
             if (progress is null && !token.CanBeCanceled) return null;
             if (token.CanBeCanceled)
             {
                 return new CopyProgressCallback((total, processed, _, _, _, _) =>
                 {
-                    var result = progress(new ProgressUpdate(total, processed));
+                    var result = progress(new ProgressUpdate(total, processed, source, destination));
                     return token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : result;
                 });
             }
             else
             {
-                return new CopyProgressCallback((a, b, c, d, e, f) => progress(new ProgressUpdate(a, b)));
+                return new CopyProgressCallback((a, b, c, d, e, f) => progress(new ProgressUpdate(a, b, source, destination)));
             }
         }
     }

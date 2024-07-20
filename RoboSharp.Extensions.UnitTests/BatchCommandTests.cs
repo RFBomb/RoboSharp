@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace RoboSharp.Extensions.Tests
 {
     [TestClass]
-    public class RoboBatchCommandTests
+    public class BatchCommandTests
     {
         [TestMethod]
         public async Task TestCopyOperation()
@@ -26,7 +26,7 @@ namespace RoboSharp.Extensions.Tests
                 var source = Test_Setup.GenerateCommand(true, false);
                 var root = new DirectoryPair(source.CopyOptions.Source, destination);
                 var files = root.EnumerateSourceFilePairs(FilePair.CreatePair).ToArray();
-                var cmd = new RoboBatchCommand(new StreamedCopierFactory());
+                var cmd = new BatchCommand(new StreamedCopierFactory());
                 cmd.LoggingOptions.IncludeFullPathNames = true;
                 cmd.Configuration.EnableFileLogging = true;
                 cmd.AddCopiers(files);
@@ -48,11 +48,11 @@ namespace RoboSharp.Extensions.Tests
             Test_Setup.ClearOutTestDestination();
             var source = Test_Setup.GenerateCommand(true, false);
             var root = new DirectoryPair(source.CopyOptions.Source, source.CopyOptions.Destination);
-            var files = root.EnumerateSourceFilePairs(FilePair.CreatePair);
-            var cmd = new RoboBatchCommand(new StreamedCopierFactory());
+            var files = root.EnumerateSourceFilePairs(FilePair.CreatePair).ToArray();
+            var cmd = new BatchCommand(new StreamedCopierFactory());
             cmd.Configuration.EnableFileLogging = true;
+            cmd.LoggingOptions.NoFileList = false;
             cmd.AddCopiers(files);
-
 
             // Simulates cancellating via a UI by cancelling AFTER it was started
             cmd.OnCopyProgressChanged += (o, e) =>
@@ -61,8 +61,10 @@ namespace RoboSharp.Extensions.Tests
                     cmd.Stop();
             };
 
+            cmd.OnError += (o, e) => Console.WriteLine(e.Error);
             var results = await Test_Setup.RunTest(cmd);
-            Assert.IsTrue(results.Results.Status.WasCancelled);
+            Test_Setup.WriteLogLines(results.Results);
+            Assert.IsTrue(results.Results.Status.WasCancelled, "Results.Status.WasCancelled flag not set!");
             var numCopied = results.Results.FilesStatistic.Copied;
             Assert.IsTrue(numCopied < 4 && numCopied > 0, $"number copied : {numCopied}");
         }

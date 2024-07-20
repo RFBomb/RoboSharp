@@ -179,10 +179,16 @@ namespace RoboSharp.Extensions.Helpers
         /// <summary>
         /// Mark an file as FAILED
         /// </summary>
-        public virtual void AddFileFailed(ProcessedFileInfo file)
+        /// <param name="file">The file to mark as failed</param>
+        /// <param name="ex">Optional - an exception whose message shall be written to the line below the file in the log.</param>
+        public virtual void AddFileFailed(ProcessedFileInfo file, Exception ex = null)
         {
             ProgressEstimator.AddFileFailed(file);
-            LogFileInfo(file);
+            //if (Command.LoggingOptions.NoFileList) return;
+            if (ex is Exception)
+                WriteToLogs(file.ToStringFailed(Command), ex.Message);
+            else
+                WriteToLogs(file.ToStringFailed(Command));
         }
 
         /// <summary>
@@ -206,15 +212,14 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <summary>
-        /// Write the <paramref name="file"/> and <paramref name="suffix"/> to the logs
+        /// Write the <paramref name="file"/> to the logs
         /// </summary>
         /// <param name="file"></param>
-        /// <param name="suffix"></param>
-        protected virtual void LogFileInfo(ProcessedFileInfo file, string suffix = "")
+        protected virtual void LogFileInfo(ProcessedFileInfo file)
         {
             //Check to log the directory listing
-            if (!Command.LoggingOptions.NoFileList)
-                WriteToLogs(file.ToString(Command.LoggingOptions) + suffix);
+            if (Command.LoggingOptions.NoFileList) return;
+            WriteToLogs(file.ToString(Command.LoggingOptions));
         }
 
         /// <summary>
