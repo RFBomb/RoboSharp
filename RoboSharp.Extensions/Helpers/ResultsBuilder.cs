@@ -186,7 +186,7 @@ namespace RoboSharp.Extensions.Helpers
         {
             if (file is null) throw new ArgumentNullException(nameof(file));
             ProgressEstimator.AddFileFailed(file);
-            WriteErrorToLogs(file.ToStringFailed(Command, ex));
+            Print(file.ToStringFailed(Command, ex),Environment.NewLine);
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace RoboSharp.Extensions.Helpers
             if (file is null) throw new ArgumentNullException(nameof(file));
             if (logLines.All(c => string.IsNullOrWhiteSpace(c))) throw new ArgumentException("Must provide atleast 1 log line with error data");
             ProgressEstimator.AddFileFailed(file);
-            WriteErrorToLogs(logLines);
+            Print(logLines);
         }
 
         /// <summary>
@@ -338,32 +338,35 @@ namespace RoboSharp.Extensions.Helpers
             Command.LoggingOptions.DeleteLogFiles();
             if (!Command.LoggingOptions.NoJobHeader)
             {
-                _isLoggingHeaderOrSummary = true;
-                WriteToLogs(Divider);
-                WriteToLogs("\t   IRoboCommand : '{0}'".Format(Command.GetType()));
-                WriteToLogs("\tResults Builder : '{0}'".Format(GetType()));
-                WriteToLogs(Divider);
-                WriteToLogs("");
-                WriteToLogs($"{PadHeader("Started")} : {StartTime.ToLongDateString()} {StartTime.ToLongTimeString()}");
-                WriteToLogs($"{PadHeader("Source")} : {Command.CopyOptions.Source}");
-                WriteToLogs($"{PadHeader("Dest")} : {Command.CopyOptions.Destination}");
-                WriteToLogs("");
+                List<string> header = new List<string>(24)
+                {
+                    Divider,
+                    $"\t      IRoboCommand : '{Command.GetType()}'",
+                    $"\t   Results Builder : '{GetType()}'",
+                    Divider,
+                    "",
+                    $"{PadHeader("Started")} : {StartTime.ToLongDateString()} {StartTime.ToLongTimeString()}",
+                    $"{PadHeader("Source")} : {Command.CopyOptions.Source}",
+                    $"{PadHeader("Dest")} : {Command.CopyOptions.Destination}",
+                    ""
+                };
+
                 if (Command.CopyOptions.FileFilter.Any())
-                    WriteToLogs($"{PadHeader("Files")} : {string.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
+                    header.Add($"{PadHeader("Files")} : {string.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
                 else
-                    WriteToLogs($"{PadHeader("Files")} : *.*");
-                WriteToLogs("");
+                    header.Add($"{PadHeader("Files")} : *.*");
+                header.Add("");
 
                 if (Command.SelectionOptions.ExcludedFiles.Any())
                 {
-                    WriteToLogs($"{PadHeader("Exc Files")} : {string.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
-                    WriteToLogs("");
+                    header.Add($"{PadHeader("Exc Files")} : {string.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
+                    header.Add("");
                 }
 
                 if (Command.SelectionOptions.ExcludedDirectories.Any())
                 {
-                    WriteToLogs($"{PadHeader("Exc Dirs")} : {string.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
-                    WriteToLogs("");
+                    header.Add($"{PadHeader("Exc Dirs")} : {string.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
+                    header.Add("");
                 }
 
                 string parsedCopyOptions = Command.CopyOptions.Parse(true);
@@ -372,10 +375,13 @@ namespace RoboSharp.Extensions.Helpers
                 string parsedLoggingOptions = Command.LoggingOptions.ToString();
                 string cmdOptions = string.Format("{0}{1}{2}{3}", parsedCopyOptions, parsedSelectionOptions, parsedRetryOptions, parsedLoggingOptions);
 
-                WriteToLogs($"{PadHeader("Options")} : {cmdOptions}");
-                WriteToLogs("");
-                WriteToLogs(Divider);
-                WriteToLogs("");
+                header.Add($"{PadHeader("Options")} : {cmdOptions}");
+                header.Add("");
+                header.Add(Divider);
+                header.Add("");
+
+                _isLoggingHeaderOrSummary = true;
+                WriteToLogs(header.ToArray());
             }
             _isLoggingHeaderOrSummary = false;
         }
@@ -421,28 +427,33 @@ namespace RoboSharp.Extensions.Helpers
             if (!Command.LoggingOptions.NoJobSummary)
             {
                 ProgressEstimator.FinalizeResults();
-                _isLoggingHeaderOrSummary = true;
-                WriteToLogs("");
-                WriteToLogs(Divider);
-                WriteToLogs("");
-                WriteToLogs(SummaryLine());
-                WriteToLogs(Tabulator(" Dirs", ProgressEstimator.DirectoriesStatistic));
-                WriteToLogs(Tabulator("Files", ProgressEstimator.FilesStatistic));
-                WriteToLogs(Tabulator("Bytes", ProgressEstimator.BytesStatistic));
-                WriteToLogs("");
-                WriteToLogs($"\tEnded : {EndTime.ToLongDateString()} {EndTime.ToLongTimeString()}");
                 TimeSpan totalTime = EndTime - StartTime;
-                WriteToLogs($"\tTotal Time: {totalTime.Hours} hours, {totalTime.Minutes} minutes, {totalTime.Seconds}.{totalTime.Milliseconds} seconds");
+
+                List<string> summary = new List<string>(20)
+                {
+                    "",
+                    Divider,
+                    "",
+                    SummaryLine(),
+                    Tabulator(" Dirs", ProgressEstimator.DirectoriesStatistic),
+                    Tabulator("Files", ProgressEstimator.FilesStatistic),
+                    Tabulator("Bytes", ProgressEstimator.BytesStatistic),
+                    "",
+                    $"\tEnded : {EndTime.ToLongDateString()} {EndTime.ToLongTimeString()}",
+                    $"\tTotal Time: {totalTime.Hours} hours, {totalTime.Minutes} minutes, {totalTime.Seconds}.{totalTime.Milliseconds} seconds"
+                };
                 if (!Command.LoggingOptions.ListOnly)
                 {
-                    WriteToLogs("");
-                    WriteToLogs($"\tSpeed: {AverageSpeed.GetBytesPerSecond()}");
-                    WriteToLogs($"\tSpeed: {AverageSpeed.GetMegaBytesPerMin()}");
+                    summary.Add("");
+                    summary.Add($"\tSpeed: {AverageSpeed.GetBytesPerSecond()}");
+                    summary.Add($"\tSpeed: {AverageSpeed.GetMegaBytesPerMin()}");
                 }
-                WriteToLogs("");
-                WriteToLogs(Divider);
-                WriteToLogs("");
-
+                summary.Add("");
+                summary.Add(Divider);
+                summary.Add("");
+                
+                _isLoggingHeaderOrSummary = true;
+                WriteToLogs(summary.ToArray());
             }
             _isLoggingHeaderOrSummary = false;
             IsSummaryWritten = true;
@@ -466,11 +477,14 @@ namespace RoboSharp.Extensions.Helpers
             }
         }
 
-        private void WriteErrorToLogs(params string[] lines)
+        /// <summary>
+        /// Write the <paramref name="logLines"/> to the logs
+        /// </summary>
+        public void Print(params string[] logLines)
         {
             bool oldVal = _isLoggingHeaderOrSummary;
             _isLoggingHeaderOrSummary = true;
-            WriteToLogs(lines);
+            WriteToLogs(logLines);
             _isLoggingHeaderOrSummary=oldVal;
         }
 

@@ -212,6 +212,11 @@ namespace RoboSharp.Extensions
             _cancellationSource = new CancellationTokenSource();
             var resultsBuilder = GetResultsBuilder();
             RaiseOnProgressEstimatorCreated(resultsBuilder.ProgressEstimator);
+            
+            // propogate the header as log lines
+            resultsBuilder.Print($"\tIFileCopierFactory : {this._copierFactory.GetType()}", ResultsBuilder.Divider, Environment.NewLine);
+            foreach (string line in resultsBuilder.CurrentLogLines)
+                RaiseOnFileProcessed(new FileProcessedEventArgs(line));
 
             var moveOp = Task.Run(async () =>
             {
