@@ -32,7 +32,6 @@ namespace RoboSharp.Extensions.Helpers
             Command = cmd ?? throw new ArgumentNullException(nameof(cmd));
             ProgressEstimator = calculator ?? throw new ArgumentNullException(nameof(calculator)); ;
             StartTime = startTime ?? DateTime.Now;
-            CreateHeader();
             Subscribe();
         }
 
@@ -331,13 +330,11 @@ namespace RoboSharp.Extensions.Helpers
         protected static string PadHeader(string RowName) => RowName.PadLeft(9);
 
         /// <summary>
-        /// Write the header to the log - this is performed at time on construction of the object
+        /// Write the header to the log
         /// </summary>
-        protected virtual void CreateHeader()
+        public virtual void CreateHeader()
         {
-            Command.LoggingOptions.DeleteLogFiles();
-            if (!Command.LoggingOptions.NoJobHeader)
-            {
+            
                 List<string> header = new List<string>(24)
                 {
                     Divider,
@@ -381,7 +378,7 @@ namespace RoboSharp.Extensions.Helpers
                 header.Add("");
 
                 Print(header.ToArray());
-            }
+        
             _isLoggingHeaderOrSummary = false;
         }
 
