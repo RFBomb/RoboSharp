@@ -85,7 +85,7 @@ namespace RoboSharp
             if (ErrorDescription.IsNullOrWhiteSpace())
                 return Error;
             else
-                return String.Format("{0}{1}{2}", Error, Environment.NewLine, ErrorDescription);
+                return $"{Error}{Environment.NewLine}{ErrorDescription}";
         }
 
         /// <summary>

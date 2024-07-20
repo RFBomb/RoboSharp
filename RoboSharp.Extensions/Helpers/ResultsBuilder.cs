@@ -177,18 +177,31 @@ namespace RoboSharp.Extensions.Helpers
         }
 
         /// <summary>
-        /// Mark an file as FAILED
+        /// Mark an file as FAILED, then write the error description to the logs
         /// </summary>
         /// <param name="file">The file to mark as failed</param>
-        /// <param name="ex">Optional - an exception whose message shall be written to the line below the file in the log.</param>
+        /// <param name="ex">The exception that will be passed into <see cref="ProcessedFileInfo.ToStringFailed(IRoboCommand, Exception, DateTime?, string)"/> when generating the log line</param>
+        /// <exception cref="ArgumentNullException"></exception>
         public virtual void AddFileFailed(ProcessedFileInfo file, Exception ex = null)
         {
+            if (file is null) throw new ArgumentNullException(nameof(file));
             ProgressEstimator.AddFileFailed(file);
-            //if (Command.LoggingOptions.NoFileList) return;
-            if (ex is Exception)
-                WriteToLogs(file.ToStringFailed(Command), ex.Message);
-            else
-                WriteToLogs(file.ToStringFailed(Command));
+            WriteErrorToLogs(file.ToStringFailed(Command, ex));
+        }
+
+        /// <summary>
+        /// Mark a file as FAILED, and write all <paramref name="logLines"/> to the logs
+        /// </summary>
+        /// <param name="file">The file to mark as failed</param>
+        /// <param name="logLines">A collection of log lines to be written to the logs.</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        public virtual void AddFileFailed(ProcessedFileInfo file, params string[] logLines)
+        {
+            if (file is null) throw new ArgumentNullException(nameof(file));
+            if (logLines.All(c => string.IsNullOrWhiteSpace(c))) throw new ArgumentException("Must provide atleast 1 log line with error data");
+            ProgressEstimator.AddFileFailed(file);
+            WriteErrorToLogs(logLines);
         }
 
         /// <summary>
@@ -451,6 +464,14 @@ namespace RoboSharp.Extensions.Helpers
                 if (_isLoggingHeaderOrSummary || Command.Configuration.EnableFileLogging) LogLines.AddRange(lines);
                 Command.LoggingOptions.AppendToLogs(lines);
             }
+        }
+
+        private void WriteErrorToLogs(params string[] lines)
+        {
+            bool oldVal = _isLoggingHeaderOrSummary;
+            _isLoggingHeaderOrSummary = true;
+            WriteToLogs(lines);
+            _isLoggingHeaderOrSummary=oldVal;
         }
 
         /// <summary>
