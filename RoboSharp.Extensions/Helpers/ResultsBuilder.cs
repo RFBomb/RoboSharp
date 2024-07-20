@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -186,7 +186,7 @@ namespace RoboSharp.Extensions.Helpers
         {
             if (file is null) throw new ArgumentNullException(nameof(file));
             ProgressEstimator.AddFileFailed(file);
-            Print(file.ToStringFailed(Command, ex),Environment.NewLine);
+            Print(file.ToStringFailed(Command, ex));
         }
 
         /// <summary>
@@ -380,8 +380,7 @@ namespace RoboSharp.Extensions.Helpers
                 header.Add(Divider);
                 header.Add("");
 
-                _isLoggingHeaderOrSummary = true;
-                WriteToLogs(header.ToArray());
+                Print(header.ToArray());
             }
             _isLoggingHeaderOrSummary = false;
         }
