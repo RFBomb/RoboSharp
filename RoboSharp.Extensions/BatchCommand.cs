@@ -1,4 +1,4 @@
-﻿using RoboSharp.Interfaces;
+using RoboSharp.Interfaces;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -214,6 +214,30 @@ namespace RoboSharp.Extensions
             RaiseOnProgressEstimatorCreated(resultsBuilder.ProgressEstimator);
             
             // propogate the header as log lines
+Command.LoggingOptions.DeleteLogFiles();
+if (!Command.LoggingOptions.NoJobHeader)
+{
+/*
+var header = new string[]{
+Divider,
+                    $"\t      IRoboCommand : '{Command.GetType()}'",
+                    $"\t   Results Builder : '{GetType()}'",
+                    Divider,
+                    "",
+                    $"{PadHeader("Started")} : {StartTime.ToLongDateString()} {StartTime.ToLongTimeString()}",
+                    $"{PadHeader("Source")} : {Command.CopyOptions.Source}",
+                    $"{PadHeader("Dest")} : {Command.CopyOptions.Destination}",
+                    "",
+                     Command.CopyOptions.Parse(true),
+                string parsedSelectionOptions = Command.SelectionOptions.Parse(true);
+                string parsedRetryOptions = Command.RetryOptions.ToString();
+                string parsedLoggingOptions = Command.LoggingOptions.ToString();
+
+};
+*/
+ // todo: Print(header)
+}
+
             resultsBuilder.Print($"\tIFileCopierFactory : {this._copierFactory.GetType()}", ResultsBuilder.Divider, Environment.NewLine);
             foreach (string line in resultsBuilder.CurrentLogLines)
                 RaiseOnFileProcessed(new FileProcessedEventArgs(line));
