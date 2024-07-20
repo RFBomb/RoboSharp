@@ -422,18 +422,13 @@
             /// <param name="timeSpan">the time span over which the bytes were copied ( EndDate - StartDate )</param>
             public void Average(long fileLength, TimeSpan timeSpan)
             {
+if (timeSpan.TotalSeconds <= 0) return; // instantaneous copies are ignored to prevent div/0 errors
                 if (fileLength < 0) throw new ArgumentException("File Length cannot be less than 0", nameof(fileLength));
-                _divisor += 1;
-if (timeSpan.TotalSeconds <= 0)
-                {
-_combinedMegabytesPerMinute += fileLength;
-_combinedBytesPerSecond += fileLength;
-}
-else 
-{
+
+         _divisor += 1;
                 _combinedBytesPerSecond += Decimal.Round(fileLength / (decimal)timeSpan.TotalSeconds, 3);
                 _combinedMegabytesPerMinute += Decimal.Round(fileLength / MegaBytePerMinDivisor / (decimal)timeSpan.TotalMinutes, 3);
-                }
+                
 CalculateAverage();
             }
     
