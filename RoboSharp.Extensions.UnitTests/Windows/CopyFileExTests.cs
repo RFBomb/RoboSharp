@@ -15,14 +15,6 @@ namespace RoboSharp.Extensions.Windows.UnitTests
     {
         private static string GetRandomPath(bool inSubFolder = false) => TestPrep.GetRandomPath(inSubFolder);
 
-        private void CreateDummyFile(string filePath, int length)
-        {
-            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                fileStream.Write(new byte[length], 0, length);
-            }
-        }
-
         [TestMethod]
         public void TestCancellationTokens()
         {
@@ -283,7 +275,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsFalse(progFullUpdated | progSizeUpdated | progPercentUpdated);
 
-                CreateDummyFile(sourceFile, 3 * 1024 * 1024);
+                IFileCopierTests.CreateDummyFile(sourceFile, 3 * 1024 * 1024);
                 File.WriteAllText(destFile, "Content to replace");
                 Assert.IsTrue(File.Exists(sourceFile));
                 Assert.IsTrue(File.Exists(destFile));
@@ -302,14 +294,14 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 progFullUpdated = false;
                 assertMessage = "\n Allow Overwrite Test";
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, true), assertMessage);
-                
+
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progFull, 100, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
-                
-                
+
+
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progPercent, 100, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
-                
+
 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progSize, 100, true), assertMessage);
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
@@ -331,7 +323,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 CancellationToken GetTimedToken(int timeDelay) => new CancellationTokenSource(timeDelay).Token;
                 CancellationToken GetProgToken<T>(Progress<T> progress)
                 {
-                    var  source = new CancellationTokenSource();
+                    var source = new CancellationTokenSource();
                     progress.ProgressChanged += Cancel;
                     return source.Token;
                     void Cancel(object o, T obj)
@@ -358,8 +350,8 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             finally
             {
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
-                foreach(var dest in destinationFiles)
-                if (File.Exists(dest)) File.Delete(dest);
+                foreach (var dest in destinationFiles)
+                    if (File.Exists(dest)) File.Delete(dest);
             }
         }
     }
