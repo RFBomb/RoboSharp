@@ -261,15 +261,18 @@ namespace RoboSharp.Extensions.Windows.UnitTests
 
                 bool progFullUpdated = false;
                 var progFull = new Progress<ProgressUpdate>();
-                progFull.ProgressChanged += (o, e) => progFullUpdated = true;
+                void progFullHandler(object o, ProgressUpdate e) => progFullUpdated = true;
+                progFull.ProgressChanged += progFullHandler;
 
                 bool progPercentUpdated = false;
                 var progPercent = new Progress<double>();
-                progPercent.ProgressChanged += (o, e) => progPercentUpdated = true;
+                void progPercentHandler(object o, double e) => progPercentUpdated = true;
+                progPercent.ProgressChanged += progPercentHandler;
 
                 bool progSizeUpdated = false;
                 var progSize = new Progress<long>();
-                progSize.ProgressChanged += (o, e) => progSizeUpdated = true;
+                void progSizeHandler(object o, long e) => progPercentUpdated = true;
+                progSize.ProgressChanged += progSizeHandler;
 
                 string assertMessage = "\n Source File Missing Test";
                 await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile), assertMessage);
@@ -302,15 +305,14 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progFull, 100, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
-                await Task.Delay(30);
+                
                 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progPercent, 100, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
-                await Task.Delay(30);
+                
 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progSize, 100, true), assertMessage);
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
-                await Task.Delay(30);
 
                 // Cancellation Prior to write
                 assertMessage = "\n Cancelled before operation started Test";
