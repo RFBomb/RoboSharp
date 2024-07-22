@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Options;
 
 namespace RoboSharp.Extensions
 {
@@ -213,37 +214,11 @@ namespace RoboSharp.Extensions
             var resultsBuilder = GetResultsBuilder();
             RaiseOnProgressEstimatorCreated(resultsBuilder.ProgressEstimator);
             
-            // propogate the header as log lines
-Command.LoggingOptions.DeleteLogFiles();
-if (!Command.LoggingOptions.NoJobHeader)
-{
-/*
-var header = new string[]{
-Divider,
-                    $"\t      IRoboCommand : '{Command.GetType()}'",
-                    $"\t   Results Builder : '{GetType()}'",
-                    Divider,
-                    "",
-                    $"{PadHeader("Started")} : {StartTime.ToLongDateString()} {StartTime.ToLongTimeString()}",
-                    $"{PadHeader("Source")} : {Command.CopyOptions.Source}",
-                    $"{PadHeader("Dest")} : {Command.CopyOptions.Destination}",
-                    "",
-                     Command.CopyOptions.Parse(true),
-                string parsedSelectionOptions = Command.SelectionOptions.Parse(true);
-                string parsedRetryOptions = Command.RetryOptions.ToString();
-                string parsedLoggingOptions = Command.LoggingOptions.ToString();
-
-};
-*/
- // todo: Print(header)
-}
-
-            resultsBuilder.Print($"\tIFileCopierFactory : {this._copierFactory.GetType()}", ResultsBuilder.Divider, Environment.NewLine);
-            foreach (string line in resultsBuilder.CurrentLogLines)
-                RaiseOnFileProcessed(new FileProcessedEventArgs(line));
-
             var moveOp = Task.Run(async () =>
             {
+                LoggingOptions.DeleteLogFiles();
+                if (LoggingOptions.NoJobHeader is false) CreateHeader(resultsBuilder);
+
                 List<Task> queue = new List<Task>();
                 Task copyTask = null;
                 var evaluator = new PairEvaluator(this);
@@ -317,6 +292,31 @@ Divider,
                 return moveOperation;
             }
 
+        }
+
+        private void CreateHeader(ResultsBuilder resultsBuilder)
+        {
+            var div = ResultsBuilder.Divider;
+
+            string[] header = new string[] {
+                    div,
+                    $"\t      IRoboCommand : '{GetType()}'",
+                    $"\t   Results Builder : '{resultsBuilder.GetType()}'",
+                    $"\tIFileCopierFactory : {this._copierFactory.GetType()}",
+                    div, 
+                    Environment.NewLine,
+                    $"            Started : {DateTime.Now.ToLongDateString()} {DateTime.Now.ToLongTimeString()}",
+                    $"         File Count : {_fileCopiers.Count}",
+                    $" Copy/Retry Options : {CopyOptions.Parse(true)} {RetryOptions}",
+                    $"    Logging Options : {LoggingOptions}",
+                    Environment.NewLine,
+                    div,
+                    Environment.NewLine,
+            };
+
+            resultsBuilder.Print(header);
+            foreach (string line in header)
+                RaiseOnFileProcessed(line);
         }
 
         private async Task PerformCopyOperation(IFileCopier copier, bool isMoving, bool overWrite, int numberOfRetries, TimeSpan retryWaitTime, ResultsBuilder resultsBuilder)

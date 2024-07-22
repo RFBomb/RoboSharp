@@ -206,12 +206,20 @@ namespace RoboSharp.Extensions.Helpers
             if (e is null) throw new ArgumentNullException(nameof(e));
             OnFileProcessed?.Invoke(this, e);
         }
+        
         /// <summary> Raises the OnFileProcessed event </summary>
         /// <remarks><inheritdoc cref="OnFileProcessed"  path="*"/></remarks>
         protected virtual void RaiseOnFileProcessed(ProcessedFileInfo fileInfo)
         {
             if (fileInfo is null) throw new ArgumentNullException(nameof(fileInfo));
             OnFileProcessed?.Invoke(this, new FileProcessedEventArgs(fileInfo));
+        }
+
+        /// <summary> Raises the OnFileProcessed event </summary>
+        /// <remarks><inheritdoc cref="OnFileProcessed"  path="*"/></remarks>
+        protected void RaiseOnFileProcessed(string systemMessage)
+        {
+            if (OnFileProcessed != null) RaiseOnFileProcessed(new FileProcessedEventArgs(systemMessage));
         }
 
         #endregion

@@ -334,8 +334,7 @@ namespace RoboSharp.Extensions.Helpers
         /// </summary>
         public virtual void CreateHeader()
         {
-            
-                List<string> header = new List<string>(24)
+            List<string> header = new List<string>(24)
                 {
                     Divider,
                     $"\t      IRoboCommand : '{Command.GetType()}'",
@@ -348,38 +347,36 @@ namespace RoboSharp.Extensions.Helpers
                     ""
                 };
 
-                if (Command.CopyOptions.FileFilter.Any())
-                    header.Add($"{PadHeader("Files")} : {string.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
-                else
-                    header.Add($"{PadHeader("Files")} : *.*");
+            if (Command.CopyOptions.FileFilter.Any())
+                header.Add($"{PadHeader("Files")} : {string.Concat(Command.CopyOptions.FileFilter.Select(filter => filter + " "))}");
+            else
+                header.Add($"{PadHeader("Files")} : *.*");
+            header.Add("");
+
+            if (Command.SelectionOptions.ExcludedFiles.Any())
+            {
+                header.Add($"{PadHeader("Exc Files")} : {string.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
                 header.Add("");
+            }
 
-                if (Command.SelectionOptions.ExcludedFiles.Any())
-                {
-                    header.Add($"{PadHeader("Exc Files")} : {string.Concat(Command.SelectionOptions.ExcludedFiles.Select(filter => filter + " "))}");
-                    header.Add("");
-                }
-
-                if (Command.SelectionOptions.ExcludedDirectories.Any())
-                {
-                    header.Add($"{PadHeader("Exc Dirs")} : {string.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
-                    header.Add("");
-                }
-
-                string parsedCopyOptions = Command.CopyOptions.Parse(true);
-                string parsedSelectionOptions = Command.SelectionOptions.Parse(true);
-                string parsedRetryOptions = Command.RetryOptions.ToString();
-                string parsedLoggingOptions = Command.LoggingOptions.ToString();
-                string cmdOptions = string.Format("{0}{1}{2}{3}", parsedCopyOptions, parsedSelectionOptions, parsedRetryOptions, parsedLoggingOptions);
-
-                header.Add($"{PadHeader("Options")} : {cmdOptions}");
+            if (Command.SelectionOptions.ExcludedDirectories.Any())
+            {
+                header.Add($"{PadHeader("Exc Dirs")} : {string.Concat(Command.SelectionOptions.ExcludedDirectories.Select(filter => filter + " "))}");
                 header.Add("");
-                header.Add(Divider);
-                header.Add("");
+            }
 
-                Print(header.ToArray());
-        
-            _isLoggingHeaderOrSummary = false;
+            string parsedCopyOptions = Command.CopyOptions.Parse(true);
+            string parsedSelectionOptions = Command.SelectionOptions.Parse(true);
+            string parsedRetryOptions = Command.RetryOptions.ToString();
+            string parsedLoggingOptions = Command.LoggingOptions.ToString();
+            string cmdOptions = string.Format("{0}{1}{2}{3}", parsedCopyOptions, parsedSelectionOptions, parsedRetryOptions, parsedLoggingOptions);
+
+            header.Add($"{PadHeader("Options")} : {cmdOptions}");
+            header.Add("");
+            header.Add(Divider);
+            header.Add("");
+
+            Print(header.ToArray());
         }
 
         /// <summary>
@@ -447,7 +444,7 @@ namespace RoboSharp.Extensions.Helpers
                 summary.Add("");
                 summary.Add(Divider);
                 summary.Add("");
-                
+
                 _isLoggingHeaderOrSummary = true;
                 WriteToLogs(summary.ToArray());
             }
@@ -481,7 +478,7 @@ namespace RoboSharp.Extensions.Helpers
             bool oldVal = _isLoggingHeaderOrSummary;
             _isLoggingHeaderOrSummary = true;
             WriteToLogs(logLines);
-            _isLoggingHeaderOrSummary=oldVal;
+            _isLoggingHeaderOrSummary = oldVal;
         }
 
         /// <summary>
