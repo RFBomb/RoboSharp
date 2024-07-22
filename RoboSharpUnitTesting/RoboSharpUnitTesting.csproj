@@ -12,6 +12,7 @@
         <IsPackable>false</IsPackable>
         <RootNamespace>RoboSharp.UnitTests</RootNamespace>
         <AssemblyName>RoboSharp.UnitTests</AssemblyName>
+        <NoWarn>1701;1702;UTA007</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

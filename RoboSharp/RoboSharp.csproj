@@ -13,7 +13,7 @@
         </TargetFrameworks>
         <NetFrameworkRegex><![CDATA[^net4[5-8][0-2]?$]]></NetFrameworkRegex>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>1.6.0</Version>
+        <Version>1.5.3</Version>
         <Copyright>Copyright 2024</Copyright>
         <Authors>Terry</Authors>
         <owners>Terry</owners>
@@ -33,15 +33,30 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\readme.md" Pack="true" PackagePath="\"/>
-        <None Include="..\robosharp.png" Pack="true" PackagePath="\"/>
-        <None Include="..\license" Pack="true" PackagePath="\"/>
+        <None Include="..\readme.md" Pack="true" PackagePath="\" />
+        <None Include="..\robosharp.png" Pack="true" PackagePath="\" />
+        <None Include="..\license" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Properties\Settings.Designer.cs">
+        <DesignTimeSharedInput>True</DesignTimeSharedInput>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Settings.settings</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Properties\Settings.settings">
+        <Generator>SettingsSingleFileGenerator</Generator>
+        <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+      </None>
     </ItemGroup>
     
     <!-- Conditional Target Requirements -->
     <Choose>
         <!-- NetFramework -->
-        <When Condition=" $([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '$(NetFrameworkRegex)'))" >
+        <When Condition=" $([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '$(NetFrameworkRegex)'))">
             <PropertyGroup>
                 <langversion>8.0</langversion>
             </PropertyGroup>

@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>net472;net5.0;net8.0</TargetFrameworks>
-
     <IsPackable>false</IsPackable>
+    <NoWarn>1701;1702;UTA007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

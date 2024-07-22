@@ -2,6 +2,7 @@
 using RoboSharp.Extensions.Tests;
 using RoboSharp.Extensions.Windows;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -243,7 +244,15 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             if (!VersionManager.IsPlatformWindows) return;
             RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
             string sourceFile = GetRandomPath();
-            string destFile = GetRandomPath();
+
+            List<string> destinationFiles = new List<string>();
+            string GetDestination()
+            {
+                string dest = GetRandomPath();
+                destinationFiles.Add(dest);
+                return dest;
+            }
+            string destFile = GetDestination();
 
             try
             {
@@ -295,38 +304,49 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
                 await Task.Delay(30);
                 
-                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progPercent, 100, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
                 await Task.Delay(30);
 
-                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
+                Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progSize, 100, true), assertMessage);
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
                 await Task.Delay(30);
 
                 // Cancellation Prior to write
-                assertMessage = "\n Cancellation Test";
+                assertMessage = "\n Cancelled before operation started Test";
                 var cdToken = new CancellationTokenSource();
                 cdToken.Cancel();
                 File.Delete(destFile);
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, cdToken.Token), assertMessage);
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, cdToken.Token), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 50, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 50, false, cdToken.Token), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 50, false, cdToken.Token), assertMessage);
                 Assert.IsFalse(File.Exists(destFile));
 
                 // Cancellation Mid-Write
-                assertMessage = "\n Cancellation Test";
-                CancellationToken GetTimedToken() => new CancellationTokenSource(new TimeSpan(130)).Token;
+                assertMessage = "\n Mid-Write Cancellation Test";
+                CancellationToken GetTimedToken(int timeDelay) => new CancellationTokenSource(timeDelay).Token;
+                CancellationToken GetProgToken<T>(Progress<T> progress)
+                {
+                    var  source = new CancellationTokenSource();
+                    progress.ProgressChanged += Cancel;
+                    return source.Token;
+                    void Cancel(object o, T obj)
+                    {
+                        source.Cancel();
+                        progress.ProgressChanged -= Cancel;
+                    }
+                }
                 File.Delete(destFile);
                 progPercentUpdated = false;
                 progSizeUpdated = false;
                 progFullUpdated = false;
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 100, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 100, false, GetTimedToken()), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, false, GetTimedToken()), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, GetTimedToken(40)), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, GetTimedToken(40)), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 50, false, GetProgToken(progFull)), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 50, false, GetProgToken(progPercent)), assertMessage);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 50, false, GetProgToken(progSize)), assertMessage);
                 // These progress report assertions are to check that the operation STARTED but was cancelled prior to completion, causing deletion because Restartable mode was not used.
                 //Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
                 //Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
@@ -336,9 +356,9 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             finally
             {
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
-                if (File.Exists(destFile)) File.Delete(destFile);
+                foreach(var dest in destinationFiles)
+                if (File.Exists(dest)) File.Delete(dest);
             }
         }
-
     }
 }
