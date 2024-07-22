@@ -45,7 +45,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         }
 
         [TestMethod()]
-        public async Task RunIFileCopierTests()
+        public async Task IFileCopierFactoryTests_CopyFileEx()
         {
             IFileCopierFactory factory = new CopyFileExFactory() { Options = CopyFileExOptions.NONE };
             if (VersionManager.IsPlatformWindows)
@@ -61,6 +61,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         {
             if (!VersionManager.IsPlatformWindows) return;
 
+            RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
             string sourceFile = GetRandomPath();
             string destFile = GetRandomPath(true);
             string destFolder = Path.GetDirectoryName(destFile);
@@ -89,7 +90,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         public void CopyFileEx_CopyFile()
         {
             if (!VersionManager.IsPlatformWindows) return;
-
+            RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
             bool callbackHit = false;
             int callbackHitCount = 0;
             var sourceFile = GetRandomPath();
@@ -165,7 +166,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         public async Task CopyFileEx_CopyFileAsync()
         {
             if (!VersionManager.IsPlatformWindows) return;
-
+            RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
             bool callbackHit = false;
             int callbackHitCount = 0;
             string sourceFile = GetRandomPath();
@@ -240,7 +241,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         public async Task CopyFileEx_AsyncOverloads()
         {
             if (!VersionManager.IsPlatformWindows) return;
-
+            RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
             string sourceFile = GetRandomPath();
             string destFile = GetRandomPath();
 

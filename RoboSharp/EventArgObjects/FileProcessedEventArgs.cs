@@ -5,6 +5,8 @@ using System.IO;
 // Do Not change NameSpace here! -> Must be RoboSharp due to prior releases
 namespace RoboSharp
 {
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
     /// <summary>
     /// <inheritdoc cref="ProcessedFileInfo"/>
     /// </summary>
@@ -16,7 +18,6 @@ namespace RoboSharp
         /// <inheritdoc cref="ProcessedFileInfo"/>
         public ProcessedFileInfo ProcessedFile { get; }
 
-        /// <inheritdoc cref="EventArgs.EventArgs"/>
         public FileProcessedEventArgs(ProcessedFileInfo file)
         {
             ProcessedFile = file;
@@ -38,3 +39,4 @@ namespace RoboSharp
         }
     }
 }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

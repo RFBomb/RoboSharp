@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RoboSharp.UnitTests;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -68,6 +69,7 @@ namespace RoboSharp.Extensions.Tests
         /// </summary>
         private static IFileCopier RunFactoryTests(IFileCopierFactory factory)
         {
+            Test_Setup.PrintEnvironment();
             FileInfo source = new FileInfo(GetRandomPath(false));
             FileInfo dest = new FileInfo(GetRandomPath(true));
             
