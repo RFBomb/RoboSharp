@@ -206,7 +206,7 @@ namespace RoboSharp.Extensions.Windows
                     await updateTask.CatchCancellation(false);
                     updateToken.Dispose();
                     Report();
-                    return await result;
+                    return await result.ConfigureAwait(false);
                 }, TaskContinuationOptions.None)
                 .Unwrap();
 
