@@ -11,6 +11,7 @@ using RoboSharp.Interfaces;
 using System.Diagnostics;
 using System.Text;
 using System.Collections;
+using RoboSharp.BackupApp.Views;
 
 namespace RoboSharp.BackupApp
 {
@@ -549,7 +550,7 @@ namespace RoboSharp.BackupApp
         {
             Dispatcher.Invoke(() =>
             {
-                RoboQueueProgressStackPanel.Children.Add(new MultiJob_CommandProgressIndicator(e.Command));
+                RoboQueueProgressStackPanel.Children.Add(new CommandProgressView(e.Command));
             });
             UpdateCommandsRunningBox();
         }
@@ -582,7 +583,7 @@ namespace RoboSharp.BackupApp
                 else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
                 {
                     //Remove associated MultiJob_CommandProgressIndicator
-                    var PBars = RoboQueueProgressStackPanel.Children.OfType<MultiJob_CommandProgressIndicator>();
+                    var PBars = RoboQueueProgressStackPanel.Children.OfType<CommandProgressView>();
                     foreach (var element in PBars)
                     {
                         if (e.OldItems.Contains(element.Command))
@@ -645,14 +646,14 @@ namespace RoboSharp.BackupApp
         private void SourceBrowseButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+            _ = dialog.ShowDialog();
             Source.Text = dialog.SelectedPath;
         }
 
         private void DestinationBrowseButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+            _ = dialog.ShowDialog();
             Destination.Text = dialog.SelectedPath;
         }
 

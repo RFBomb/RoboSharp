@@ -15,19 +15,19 @@ using System.Windows.Shapes;
 using System.IO;
 using RoboSharp.Interfaces;
 
-namespace RoboSharp.BackupApp
+namespace RoboSharp.BackupApp.Views
 {
     /// <summary>
     /// Interaction logic for MultiJob_CommandProgressIndicator.xaml
     /// </summary>
-    public partial class MultiJob_CommandProgressIndicator : Expander
+    public partial class CommandProgressView : Expander
     {
-        public MultiJob_CommandProgressIndicator()
+        public CommandProgressView()
         {
             InitializeComponent();
         }
 
-        public MultiJob_CommandProgressIndicator(IRoboCommand cmd)
+        public CommandProgressView(IRoboCommand cmd)
         {
             InitializeComponent();
             BindToCommand(cmd);
