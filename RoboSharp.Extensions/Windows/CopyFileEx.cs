@@ -156,45 +156,52 @@ namespace RoboSharp.Extensions.Windows
             if (!Source.Exists) throw new FileNotFoundException("Source File Not Found.", Source.FullName);
             if (!overwrite && Destination.Exists) throw new IOException("Destination file already exists");
 
+            Task<bool> copyTask;
             bool copied = false;
-            Task updateTask = null;
             long fileSize = Source.Length;
             long totalBytesTransferred = 0;
             var options = overwrite ? CopyOptions &= ~CopyFileExOptions.FAIL_IF_EXISTS : CopyOptions | CopyFileExOptions.FAIL_IF_EXISTS;
 
+            //Task.Run the copy operation in the background, and push updates on the local thread asynchronously
             try
             {
                 SetStarted();
                 _cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 Destination.Directory.Create();
 
-                while (!copied && !_cancellationSource.IsCancellationRequested)
+                copyTask = Task.Run(async () =>
                 {
-                    if (IsPaused)
+                    LPPROGRESS_ROUTINE callback = CreateCallbackInternal(progressRecorder, CancellationToken.None);
+                    while (_cancellationSource.IsCancellationRequested is false)
                     {
-                        await Task.Delay(100, _cancellationSource.Token); // Do nothing while waiting to unpause - This only applies if started in restartable mode
-                    }
-                    else
-                    {
-                        //Writer - consumes a thread while not paused
-                        try
+                        if (IsPaused)
                         {
-                            LPPROGRESS_ROUTINE callback = CreateCallbackInternal(progressRecorder, CancellationToken.None);
-                            copied = await Task.Run(() =>
-                            {
-                                var result = CopyFileEx.InvokeCopyFileEx(Source.FullName, Destination.FullName, callback, options);
-                                if (!result) Win32Error.ThrowLastError(Source.FullName, Destination.FullName);
-                                return result;
-                            }, _cancellationSource.Token).ConfigureAwait(false);
+                            await Task.Delay(100, _cancellationSource.Token).CatchCancellation(); // Do nothing while waiting to unpause - This only applies if started in restartable mode
                         }
-                        catch (OperationCanceledException) when (IsPaused) { }
+                        else
+                        {
+                            try
+                            {
+                                // returns true upon success, otherwise throws
+                                return CopyFileEx.InvokeCopyFileEx(Source.FullName, Destination.FullName, callback, options);
+                            }
+                            catch (OperationCanceledException) when (IsPaused) { }
+                        }
                     }
+                    return false;
+                }, _cancellationSource.Token);
+
+                // Progress Reporting
+                while (copyTask.Status < TaskStatus.RanToCompletion && totalBytesTransferred < Source.Length)
+                {
+                    if (!IsPaused) OnProgressUpdated((double)100 * totalBytesTransferred / fileSize);
+                    await Task.Delay(100, _cancellationSource.Token).CatchCancellation();
                 }
+                copied = await copyTask;
             }
             finally
             {
                 _cancellationSource?.Cancel();
-                if (updateTask != null) await updateTask.CatchCancellation(false);
                 Destination.Refresh();
                 if (copied && Progress != 100) OnProgressUpdated(100);
                 SetEnded(copied);
@@ -208,22 +215,9 @@ namespace RoboSharp.Extensions.Windows
                 else
                     totalBytesTransferred = byteCount;
 
-                updateTask ??= Task.Run(ProgressReportingTask, _cancellationSource.Token);
-
                 if (_cancellationSource.Token.IsCancellationRequested)
                     return CopyProgressCallbackResult.CANCEL;
                 return IsPaused ? CopyProgressCallbackResult.STOP : CopyProgressCallbackResult.CONTINUE;
-            }
-
-            // Updater - asynchronous background task
-            async Task ProgressReportingTask()
-            {
-                while (totalBytesTransferred < Source.Length)
-                {
-                    if (!IsPaused) OnProgressUpdated((double)100 * totalBytesTransferred / fileSize);
-                    _cancellationSource.Token.ThrowIfCancellationRequested();
-                    await Task.Delay(100, _cancellationSource.Token);
-                }
             }
         }
 

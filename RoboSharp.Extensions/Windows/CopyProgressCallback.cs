@@ -97,7 +97,6 @@ namespace RoboSharp.Extensions.Windows
         internal static unsafe LPPROGRESS_ROUTINE CreateCallbackInternal(CopyProgressCallback callback)
         {
             if (callback is null) return null;
-
             return new LPPROGRESS_ROUTINE((totalFileSize, totalBytesTransferred, streamSize, streamBytesTransferred, dwStreamNumber, dwCallbackReason, _, _, _) =>
             {
                 return (uint)callback(totalFileSize, totalBytesTransferred, streamSize, streamBytesTransferred, dwStreamNumber, (CopyProgressCallbackReason)dwCallbackReason);
@@ -112,7 +111,6 @@ namespace RoboSharp.Extensions.Windows
         internal static unsafe LPPROGRESS_ROUTINE CreateCallbackInternal(CancellationToken token)
         {
             if (!token.CanBeCanceled) return null;
-
             return new LPPROGRESS_ROUTINE((_, _, _, _, _, _, _, _, _) =>
             {
                 return (uint)(token.IsCancellationRequested ? CopyProgressCallbackResult.CANCEL : CopyProgressCallbackResult.CONTINUE);
@@ -171,7 +169,7 @@ namespace RoboSharp.Extensions.Windows
         /// <returns>A new <see cref="CopyProgressCallback"/></returns>
         public static CopyProgressCallback CreateCallback(IProgress<double> progress, CancellationToken token = default)
         {
-            if (progress is null && !token.CanBeCanceled) return null;
+            if (progress is null) throw new ArgumentNullException(nameof(progress));
             return new CopyProgressCallback((total, processed, _, _, _, _) =>
             {
                 progress.Report((double)100 * processed / total);
@@ -190,7 +188,7 @@ namespace RoboSharp.Extensions.Windows
         /// <remarks>Source and Destination information are not provided by the CopyFileEx or MoveFileWithProgress callbacks, so it must be supplied here if desired.</remarks>
         public static CopyProgressCallback CreateCallback(IProgress<ProgressUpdate> progress, string source = "", string destination = "", CancellationToken token = default)
         {
-            if (progress is null && !token.CanBeCanceled) return null;
+            if (progress is null) throw new ArgumentNullException(nameof(progress));
             return new CopyProgressCallback((total, processed, _, _, _, _) =>
             {
                 progress.Report(new ProgressUpdate(total, processed, source, destination));
@@ -209,7 +207,7 @@ namespace RoboSharp.Extensions.Windows
         /// <remarks>Source and Destination information are not provided by the CopyFileEx or MoveFileWithProgress callbacks, so it must be supplied here if desired.</remarks>
         public static CopyProgressCallback CreateCallback(Func<ProgressUpdate, CopyProgressCallbackResult> progress, string source = "", string destination = "", CancellationToken token = default)
         {
-            if (progress is null && !token.CanBeCanceled) return null;
+            if (progress is null) throw new ArgumentNullException(nameof(progress));
             if (token.CanBeCanceled)
             {
                 return new CopyProgressCallback((total, processed, _, _, _, _) =>
@@ -220,7 +218,7 @@ namespace RoboSharp.Extensions.Windows
             }
             else
             {
-                return new CopyProgressCallback((a, b, c, d, e, f) => progress(new ProgressUpdate(a, b, source, destination)));
+                return new CopyProgressCallback((a, b, _, _, _, _) => progress(new ProgressUpdate(a, b, source, destination)));
             }
         }
     }
