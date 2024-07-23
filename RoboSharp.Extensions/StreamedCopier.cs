@@ -81,7 +81,6 @@ namespace RoboSharp.Extensions
             IsCopying = true;
             _cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            Task updateTask = null;
             long totalBytesRead = 0;
             Progress = 0;
             WasCancelled = false;
@@ -89,37 +88,41 @@ namespace RoboSharp.Extensions
 
             try
             {
-                int bSize = BufferSize;
-                using var reader = new FileStream(Source.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bSize, true);
                 Destination.Directory.Create();
-                using var writer = new FileStream(Destination.FullName, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, bSize, true);
+                
+                int bSize = BufferSize;
                 int bytesRead = 0;
-
+                bool shouldUpdate = false;
+                using Timer updatePeriod = new Timer(o => shouldUpdate = true, null, 0, 100);
+                using var reader = new FileStream(Source.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bSize, true);
+                using var writer = new FileStream(Destination.FullName, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, bSize, true);
+                
                 try
                 {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
                     Memory<byte> buffer = new byte[bSize];
-                    while ((bytesRead = await reader.ReadAsync(buffer, _cancellationSource.Token).ConfigureAwait(false)) > 0)
+                    while ((bytesRead = await reader.ReadAsync(buffer, _cancellationSource.Token)) > 0)
                     {
-                        await writer.WriteAsync(buffer, _cancellationSource.Token).ConfigureAwait(false);
+                        await writer.WriteAsync(buffer, _cancellationSource.Token);
                         totalBytesRead += bytesRead;
-                        updateTask ??= Task.Run(ProgressTask, _cancellationSource.Token);
+                        if (shouldUpdate) OnProgressUpdated(CalcProgress());
                         while (IsPaused && !_cancellationSource.IsCancellationRequested)
-                            await Task.Delay(75, _cancellationSource.Token).ConfigureAwait(false);
+                            await Task.Delay(75, _cancellationSource.Token);
                     }
 #else
                     byte[] buffer = new byte[bSize];
-                    while ((bytesRead = await reader.ReadAsync(buffer, 0, bSize, _cancellationSource.Token).ConfigureAwait(false)) > 0)
+                    while ((bytesRead = await reader.ReadAsync(buffer, 0, bSize, _cancellationSource.Token)) > 0)
                     {
-                        await writer.WriteAsync(buffer, 0, bytesRead, _cancellationSource.Token).ConfigureAwait(false);
+                        await writer.WriteAsync(buffer, 0, bytesRead, _cancellationSource.Token);
                         totalBytesRead += bytesRead;
-                        updateTask ??= Task.Run(ProgressTask, _cancellationSource.Token);
+                        if (shouldUpdate) OnProgressUpdated(CalcProgress());
                         while (IsPaused && !_cancellationSource.IsCancellationRequested)
-                            await Task.Delay(75, _cancellationSource.Token).ConfigureAwait(false);
+                            await Task.Delay(75, _cancellationSource.Token);
                     }
 #endif
                     writer.Dispose();
                     reader.Dispose();
+                    updatePeriod.Dispose();
                 }
                 catch (OperationCanceledException)
                 {
@@ -138,7 +141,6 @@ namespace RoboSharp.Extensions
                 IsPaused = false;
                 EndDate = DateTime.Now;
                 _cancellationSource.Cancel();
-                if (updateTask != null) await updateTask.CatchCancellation(false);
                 var finalProg = CalcProgress();
                 if (finalProg != base.Progress) OnProgressUpdated(finalProg);
                 IsCopying = false;
@@ -149,15 +151,6 @@ namespace RoboSharp.Extensions
             return Progress == 100;
 
             double CalcProgress() => (double)100 * totalBytesRead / Source.Length;
-
-            async Task ProgressTask()
-            {
-                while (!_cancellationSource.IsCancellationRequested && totalBytesRead < Source.Length)
-                {
-                    OnProgressUpdated(CalcProgress());
-                    await Task.Delay(100, _cancellationSource.Token).CatchCancellation(false);
-                }
-            }
         }
 
         /// <inheritdoc/>
