@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RoboSharp.UnitTests;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,6 +15,15 @@ namespace RoboSharp.Extensions.Tests
     /// </summary>
     public static class IFileCopierTests
     {
+        public static void CreateDummyFile(string filePath, int lengthInBytes)
+        {
+            using (var fileStream = new FileStream(filePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                var data = new byte[lengthInBytes];
+                new Random().NextBytes(data);
+                fileStream.Write(data, 0, lengthInBytes);
+            }
+        }
 
         private static string GetRandomPath(bool inSubFolder = false) => TestPrep.GetRandomPath(inSubFolder);
 
@@ -24,12 +34,7 @@ namespace RoboSharp.Extensions.Tests
             if (!copier.Source.Exists || copier.Source.Exists && copier.Source.Length < size)
             {
                 copier.Source.Directory.Create();
-                using (FileStream fs = new FileStream(copier.Source.FullName, FileMode.CreateNew))
-                {
-                    fs.Seek(size, SeekOrigin.Begin);
-                    fs.WriteByte(0);
-                    fs.Close();
-                }
+                CreateDummyFile(copier.Source.FullName, (int)size);
                 copier.Source.Refresh();
             }
             if (deleteDest && File.Exists(copier.Destination.FullName)) copier.Destination.Delete();
@@ -68,6 +73,8 @@ namespace RoboSharp.Extensions.Tests
         /// </summary>
         private static IFileCopier RunFactoryTests(IFileCopierFactory factory)
         {
+            Console.WriteLine($"IFileCopierFactory Type : {factory.GetType()}");
+            Test_Setup.PrintEnvironment();
             FileInfo source = new FileInfo(GetRandomPath(false));
             FileInfo dest = new FileInfo(GetRandomPath(true));
             
@@ -90,6 +97,7 @@ namespace RoboSharp.Extensions.Tests
             Assert.AreEqual(source.Name, cp.Source.Name, "\n --- Created source does not match expected file name");
             Assert.AreEqual(dest.Name, cp.Destination.Name, "\n --- Created destination does not match expected file name");
 
+            Console.WriteLine($"IFileCopier Created : {cp.GetType()}");
             return cp;
         }
         private class MyFileSource : IFileSource

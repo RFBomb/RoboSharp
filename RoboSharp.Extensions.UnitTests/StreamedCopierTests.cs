@@ -14,7 +14,7 @@ namespace RoboSharp.Extensions.Tests
     public class StreamedCopierTests
     {
         [TestMethod()]
-        public async Task RunIFileCopierTests()
+        public async Task IFileCopierFactoryTests_StreamedCopierFactory()
         {
             StreamedCopierFactory factory = new StreamedCopierFactory() { BufferSize = StreamedCopier.DefaultBufferSize };
             _ = await IFileCopierTests.RunTest(factory);
