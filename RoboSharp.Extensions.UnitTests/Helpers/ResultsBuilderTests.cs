@@ -97,6 +97,7 @@ namespace RoboSharp.Extensions.Helpers.UnitTests
         [TestMethod()]
         public void AddFileFailedTest()
         {
+            //Failed Files are ALWAYS reported by robocopy :   [DateTime] [Error Code] [Action] [Path]
             var items = GetBuilder();
             var cmd = items.cmd;
             var builder = items.builder;
@@ -104,11 +105,8 @@ namespace RoboSharp.Extensions.Helpers.UnitTests
             var testFile = new ProcessedFileInfo() { FileClass = cmd.Configuration.LogParsing_NewFile, FileClassType = FileClassType.File, Name = "TestFileName", Size = 100 };
             cmd.LoggingOptions.NoFileList = true;
             builder.AddFileFailed(testFile);
-            Assert.AreEqual(0, builder.CurrentLogLines.LongLength);
-            cmd.LoggingOptions.NoFileList = false;
-            builder.AddFileFailed(testFile);
-            Assert.AreEqual(1, builder.CurrentLogLines.LongLength);
-            Assert.AreEqual(2, builder.GetResults().FilesStatistic.Failed);
+            Assert.AreEqual(1, builder.CurrentLogLines.LongLength, "Log Lines do not match expected value");
+            Assert.AreEqual(1, builder.GetResults().FilesStatistic.Failed, "File Statistics do not match expected value");
         }
 
         [TestMethod()]

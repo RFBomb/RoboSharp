@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Options;
 
 namespace RoboSharp.Extensions
 {
@@ -212,9 +213,12 @@ namespace RoboSharp.Extensions
             _cancellationSource = new CancellationTokenSource();
             var resultsBuilder = GetResultsBuilder();
             RaiseOnProgressEstimatorCreated(resultsBuilder.ProgressEstimator);
-
+            
             var moveOp = Task.Run(async () =>
             {
+                LoggingOptions.DeleteLogFiles();
+                if (LoggingOptions.NoJobHeader is false) CreateHeader(resultsBuilder);
+
                 List<Task> queue = new List<Task>();
                 Task copyTask = null;
                 var evaluator = new PairEvaluator(this);
@@ -288,6 +292,31 @@ namespace RoboSharp.Extensions
                 return moveOperation;
             }
 
+        }
+
+        private void CreateHeader(ResultsBuilder resultsBuilder)
+        {
+            var div = ResultsBuilder.Divider;
+
+            string[] header = new string[] {
+                    div,
+                    $"\t      IRoboCommand : '{GetType()}'",
+                    $"\t   Results Builder : '{resultsBuilder.GetType()}'",
+                    $"\tIFileCopierFactory : {this._copierFactory.GetType()}",
+                    div, 
+                    Environment.NewLine,
+                    $"            Started : {DateTime.Now.ToLongDateString()} {DateTime.Now.ToLongTimeString()}",
+                    $"         File Count : {_fileCopiers.Count}",
+                    $" Copy/Retry Options : {CopyOptions.Parse(true)} {RetryOptions}",
+                    $"    Logging Options : {LoggingOptions}",
+                    Environment.NewLine,
+                    div,
+                    Environment.NewLine,
+            };
+
+            resultsBuilder.Print(header);
+            foreach (string line in header)
+                RaiseOnFileProcessed(line);
         }
 
         private async Task PerformCopyOperation(IFileCopier copier, bool isMoving, bool overWrite, int numberOfRetries, TimeSpan retryWaitTime, ResultsBuilder resultsBuilder)

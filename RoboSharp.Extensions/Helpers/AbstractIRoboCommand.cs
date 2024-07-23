@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -65,7 +65,7 @@ namespace RoboSharp.Extensions.Helpers
         /// Create a new RoboCommand with identical options of the supplied IRoboCommand
         /// </summary>
         /// <param name="command">RoboCommand that provides the options to clone</param>
-        public AbstractIRoboCommand(IRoboCommand command)
+        protected AbstractIRoboCommand(IRoboCommand command)
         {
             Name = command.Name;
             StopIfDisposing = command.StopIfDisposing;
@@ -206,12 +206,20 @@ namespace RoboSharp.Extensions.Helpers
             if (e is null) throw new ArgumentNullException(nameof(e));
             OnFileProcessed?.Invoke(this, e);
         }
+        
         /// <summary> Raises the OnFileProcessed event </summary>
         /// <remarks><inheritdoc cref="OnFileProcessed"  path="*"/></remarks>
         protected virtual void RaiseOnFileProcessed(ProcessedFileInfo fileInfo)
         {
             if (fileInfo is null) throw new ArgumentNullException(nameof(fileInfo));
             OnFileProcessed?.Invoke(this, new FileProcessedEventArgs(fileInfo));
+        }
+
+        /// <summary> Raises the OnFileProcessed event </summary>
+        /// <remarks><inheritdoc cref="OnFileProcessed"  path="*"/></remarks>
+        protected void RaiseOnFileProcessed(string systemMessage)
+        {
+            if (OnFileProcessed != null) RaiseOnFileProcessed(new FileProcessedEventArgs(systemMessage));
         }
 
         #endregion
