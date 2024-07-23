@@ -230,6 +230,18 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             }
         }
 
+        private Progress<ProgressUpdate> progFull = new Progress<ProgressUpdate>();
+        private Progress<double> progPercent = new Progress<double>();
+        private Progress<long> progSize = new Progress<long>();
+
+        bool progFullUpdated = false;
+        bool progPercentUpdated = false;
+        bool progSizeUpdated = false;
+
+        void progFullHandler(object o, ProgressUpdate e) => progFullUpdated = true;
+        void progPercentHandler(object o, double e) => progPercentUpdated = true;
+        void progSizeHandler(object o, long e) => progSizeUpdated = true;
+
         [TestMethod()]
         public async Task CopyFileEx_AsyncOverloads()
         {
@@ -242,7 +254,6 @@ namespace RoboSharp.Extensions.Windows.UnitTests
             {
                 string dest = GetRandomPath();
                 destinationFiles.Add(dest);
-                Console.WriteLine($"New Destination : {dest}");
                 return dest;
             }
             string destFile = GetDestination();
@@ -252,19 +263,9 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Console.WriteLine(string.Format("Source: {0}\nDestination: {1}", sourceFile, destFile));
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
 
-                bool progFullUpdated = false;
-                var progFull = new Progress<ProgressUpdate>();
-                void progFullHandler(object o, ProgressUpdate e) => progFullUpdated = true;
+
                 progFull.ProgressChanged += progFullHandler;
-
-                bool progPercentUpdated = false;
-                var progPercent = new Progress<double>();
-                void progPercentHandler(object o, double e) => progPercentUpdated = true;
                 progPercent.ProgressChanged += progPercentHandler;
-
-                bool progSizeUpdated = false;
-                var progSize = new Progress<long>();
-                void progSizeHandler(object o, long e) => progPercentUpdated = true;
                 progSize.ProgressChanged += progSizeHandler;
 
                 string assertMessage = "\n Source File Missing Test";
@@ -276,7 +277,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 100, true), assertMessage);
                 Assert.IsFalse(progFullUpdated | progSizeUpdated | progPercentUpdated);
 
-                IFileCopierTests.CreateDummyFile(sourceFile, 3 * 1024 * 1024);
+                IFileCopierTests.CreateDummyFile(sourceFile, 24 * 1024 * 1024);
                 File.WriteAllText(destFile, "Content to replace");
                 Assert.IsTrue(File.Exists(sourceFile));
                 Assert.IsTrue(File.Exists(destFile));
@@ -300,10 +301,8 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progFull, 25, true), assertMessage);
                 Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
 
-
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progPercent, 25, true), assertMessage);
                 Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
-
 
                 Assert.IsTrue(await CopyFileEx.CopyFileAsync(sourceFile, GetDestination(), progSize, 25, true), assertMessage);
                 Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
@@ -321,8 +320,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 Assert.IsFalse(File.Exists(destFile));
 
                 // Cancellation Mid-Write
-                assertMessage = "\n Mid-Write Cancellation Test";
-                CancellationToken GetTimedToken(int timeDelay) => new CancellationTokenSource(timeDelay).Token;
+                assertMessage = "\n Mid-Write Cancellation Test #";
                 CancellationToken GetProgToken<T>(Progress<T> progress)
                 {
                     var source = new CancellationTokenSource();
@@ -335,18 +333,12 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                     }
                 }
                 File.Delete(destFile);
-                progPercentUpdated = false;
-                progSizeUpdated = false;
-                progFullUpdated = false;
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, GetTimedToken(40)), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, false, GetTimedToken(40)), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 50, false, GetProgToken(progFull)), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 50, false, GetProgToken(progPercent)), assertMessage);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 50, false, GetProgToken(progSize)), assertMessage);
+                CopyProgressCallback midWriteCancelCallback = new CopyProgressCallback((a, b, c, d, e, f) => CopyProgressCallbackResult.CANCEL);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, midWriteCancelCallback, CancellationToken.None), assertMessage + 1);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 25, false, GetProgToken(progFull)), assertMessage + 2);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 25, false, GetProgToken(progPercent)), assertMessage + 3);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 25, false, GetProgToken(progSize)), assertMessage + 4);
                 // These progress report assertions are to check that the operation STARTED but was cancelled prior to completion, causing deletion because Restartable mode was not used.
-                //Assert.IsTrue(progFullUpdated, "Full Progress object never reported");
-                //Assert.IsTrue(progSizeUpdated, "Size Progress object never reported");
-                //Assert.IsTrue(progPercentUpdated, "Percentage Progress object never reported");
                 Assert.IsFalse(File.Exists(destFile));
             }
             finally
@@ -354,6 +346,10 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 if (File.Exists(sourceFile)) File.Delete(sourceFile);
                 foreach (var dest in destinationFiles)
                     if (File.Exists(dest)) File.Delete(dest);
+
+                progFull.ProgressChanged -= progFullHandler;
+                progPercent.ProgressChanged -= progPercentHandler;
+                progSize.ProgressChanged -= progSizeHandler;
             }
         }
     }

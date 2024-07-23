@@ -42,6 +42,11 @@ namespace RoboSharp.Extensions.Windows
         /// <param name="destination">The path to the destination file.</param>
         /// <param name="progressCallback">Callback function for progress notifications during the copy operation.</param>
         /// <param name="flags">Flags specifying how the file should be copied.</param>
+        /// <param name="cancellationToken">
+        /// An optional CancellationToken to monitor. 
+        /// <br/> - If cancelled prior to starting, returns false. 
+        /// <br/> - If cancelled while copying, throws <see cref="OperationCanceledException"/>
+        /// </param>
         /// <returns>True if the file copy operation is successful; otherwise, false.</returns>
         /// <exception cref="OperationCanceledException"/>
         /// <exception cref="IOException"/>
@@ -51,22 +56,20 @@ namespace RoboSharp.Extensions.Windows
             string source,
             string destination,
             CopyFileExOptions flags,
-            CopyProgressCallback progressCallback
+            CopyProgressCallback progressCallback = null,
+            CancellationToken cancellationToken = default
             )
         {
+            if (cancellationToken.IsCancellationRequested) return false;
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
-            return InvokeCopyFileEx(source, destination, FileFunctions.CreateCallbackInternal(progressCallback, default), flags);
+            return InvokeCopyFileEx(source, destination, FileFunctions.CreateCallbackInternal(progressCallback, cancellationToken), flags);
         }
-
-        ///<inheritdoc cref="CopyFile(string,string,CopyFileExOptions, CopyProgressCallback)"/>
-        public static bool CopyFile(string source, string destination, CopyFileExOptions flags)
-            => CopyFile(source, destination, flags, null);
 
         /// <summary>
         /// Executes the CopyFileEx function via <see cref="Task.Run(Action, CancellationToken)"/>
         /// </summary>
-        ///<inheritdoc cref="CopyFile(string,string,CopyFileExOptions, CopyProgressCallback)"/>
+        ///<inheritdoc cref="CopyFile(string,string,CopyFileExOptions, CopyProgressCallback, CancellationToken)"/>
         public static Task<bool> CopyFileAsync(
             string source,
             string destination,
@@ -75,6 +78,7 @@ namespace RoboSharp.Extensions.Windows
             CancellationToken token = default
             )
         {
+            token.ThrowIfCancellationRequested();
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
             LPPROGRESS_ROUTINE callback = FileFunctions.CreateCallbackInternal(progressCallback, token);
@@ -106,51 +110,66 @@ namespace RoboSharp.Extensions.Windows
         /// <exception cref="IOException"/>
         /// <exception cref="FileNotFoundException"/>
         /// <exception cref="OperationCanceledException"/>
-        public static async Task<bool> CopyFileAsync(string source, string destination, bool overwrite, CancellationToken token = default)
+        public static Task<bool> CopyFileAsync(string source, string destination, bool overwrite, CancellationToken token = default)
         {
+            token.ThrowIfCancellationRequested();
             if (!File.Exists(source)) throw new FileNotFoundException("Source File Not Found.", source);
             bool destExists = File.Exists(destination);
             if (!overwrite && destExists) throw new IOException("The destination already file exists");
             token.ThrowIfCancellationRequested();
-            return await CopyFileAsync(source, destination, flags: overwrite ? CopyFileExOptions.NONE : CopyFileExOptions.FAIL_IF_EXISTS, token: token).ConfigureAwait(false);
+            return CopyFileAsync(source, destination, flags: overwrite ? CopyFileExOptions.NONE : CopyFileExOptions.FAIL_IF_EXISTS, token: token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<double> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, overwrite ? CopyFileExOptions.NONE : CopyFileExOptions.FAIL_IF_EXISTS, updateInterval, percentProgress: progress, token: token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<ProgressUpdate> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, overwrite ? CopyFileExOptions.NONE : CopyFileExOptions.FAIL_IF_EXISTS, updateInterval, progress, null, null, token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<long> progress, int updateInterval = 100, bool overwrite = false, CancellationToken token = default)
         {
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, overwrite ? CopyFileExOptions.NONE : CopyFileExOptions.FAIL_IF_EXISTS, updateInterval, sizeProgress: progress, token: token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<double> progress, CopyFileExOptions options, int updateInterval = 100, CancellationToken token = default)
         {
+
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, options, updateInterval, null, null, progress, token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<long> progress, CopyFileExOptions options, int updateInterval = 100, CancellationToken token = default)
         {
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, options, updateInterval, null, progress, null, token);
         }
 
         /// <inheritdoc cref="CopyFileProgressAsync"/>
         public static Task<bool> CopyFileAsync(string source, string destination, IProgress<ProgressUpdate> progress, CopyFileExOptions options, int updateInterval = 100, CancellationToken token = default)
         {
+            if (ValidateArgs(source, destination, progress) is Exception e) throw e;
             return CopyFileProgressAsync(source, destination, options, updateInterval, progress, null, null, token);
         }
 
+        private static Exception ValidateArgs<T>(string source, string destination, IProgress<T> progress)
+        {
+            if (progress is null) return new ArgumentNullException(nameof(progress));
+            if (!RoboCommandParser.IsPathFullyQualified(source)) return new ArgumentException("Source is not fully qualified", nameof(source));
+            if (!RoboCommandParser.IsPathFullyQualified(destination)) return new ArgumentException("Destination is not fully qualified", nameof(destination));
+            return null;
+        }
 
         /// <summary>
         /// CopyFileAsync with a progress reporter
@@ -162,7 +181,11 @@ namespace RoboSharp.Extensions.Windows
         /// <inheritdoc cref="CopyFileAsync(string, string, bool, CancellationToken)"/>
         /// <param name="source"/><param name="destination"/><param name="token"/>
         /// <param name="percentProgress"/><param name="sizeProgress"/>
-        private static Task<bool> CopyFileProgressAsync(
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="OperationCanceledException"/>
+        /// <exception cref="FileNotFoundException"/>
+        private static async Task<bool> CopyFileProgressAsync(
             string source, string destination, CopyFileExOptions options,
             int updateInterval = 100,
             IProgress<ProgressUpdate> progress = null,
@@ -171,57 +194,52 @@ namespace RoboSharp.Extensions.Windows
             CancellationToken token = default
             )
         {
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested) throw new TaskCanceledException();
             FileInfo sourceFile = new FileInfo(source);
             if (!sourceFile.Exists) throw new FileNotFoundException("Source file does not exist", source);
             if (options.HasFlag(CopyFileExOptions.FAIL_IF_EXISTS) && File.Exists(destination)) throw new IOException("The destination already file exists");
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination));
 
-            // Updater
-            Task updateTask = null;
-            long fileSize = 0;
-            long totalBytesRead = 0;
-            updateInterval = updateInterval > 25 ? updateInterval : 100;
-            var updateToken = CancellationTokenSource.CreateLinkedTokenSource(token);
+            Task<bool> copyTask;
+            LPPROGRESS_ROUTINE callback;
+
             if (sourceFile.Length > 0 && (progress != null | sizeProgress != null | percentProgress != null))
             {
-                updateTask = Task.Run(async () =>
-                {
-                    while (totalBytesRead < sourceFile.Length)
-                    {
-                        updateToken.Token.ThrowIfCancellationRequested();
-                        Report();
-                        await Task.Delay(updateInterval, updateToken.Token);
-                    }
-                }, updateToken.Token);
-            }
+                // Copy Task
+                long fileSize = 0;
+                long totalBytesRead = 0;
+                callback = FileFunctions.CreateCallbackInternal(progressRecorder, token);
+                copyTask = Task.Run(() => InvokeCopyFileEx(source, destination, callback, options: default), token);
 
-            //Writer
-            var callback = FileFunctions.CreateCallbackInternal(progressRecorder, token);
-
-            return Task.Run(() => InvokeCopyFileEx(source, destination, callback, options: default), token)
-                .ContinueWith(async result =>
+                // Report Progress
+                updateInterval = updateInterval >= 5 ? updateInterval : 100;
+                while (copyTask.Status < TaskStatus.RanToCompletion && totalBytesRead < sourceFile.Length)
                 {
-                    updateToken.Cancel();
-                    await updateTask.CatchCancellation(false);
-                    updateToken.Dispose();
                     Report();
-                    return await result.ConfigureAwait(false);
-                }, TaskContinuationOptions.None)
-                .Unwrap();
+                    await Task.Delay(updateInterval, token).CatchCancellation(true);
+                }
+                Report();
 
-            void progressRecorder(long size, long copied)
-            {
-                fileSize = size;
-                totalBytesRead = copied;
+                // Helper Functions
+                void progressRecorder(long size, long copied)
+                {
+                    fileSize = size;
+                    totalBytesRead = copied;
+                }
+                void Report()
+                {
+                    progress?.Report(new ProgressUpdate(fileSize, totalBytesRead, source, destination));
+                    sizeProgress?.Report(totalBytesRead);
+                    percentProgress?.Report((double)100 * totalBytesRead / fileSize);
+                }
             }
-
-            void Report()
+            else
             {
-                progress?.Report(new ProgressUpdate(fileSize, totalBytesRead, source, destination));
-                sizeProgress?.Report(totalBytesRead);
-                percentProgress?.Report((double)100 * totalBytesRead / fileSize);
+                // No progress reporting
+                callback = FileFunctions.CreateCallbackInternal(null, token);
+                copyTask = Task.Run(() => InvokeCopyFileEx(source, destination, callback, options: default), token);
             }
+            return await copyTask;
         }
     }
 }
