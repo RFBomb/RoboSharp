@@ -335,9 +335,9 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 File.Delete(destFile);
                 CopyProgressCallback midWriteCancelCallback = new CopyProgressCallback((a, b, c, d, e, f) => CopyProgressCallbackResult.CANCEL);
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, CopyFileExOptions.NONE, midWriteCancelCallback, CancellationToken.None), assertMessage + 1);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 25, false, GetProgToken(progFull)), assertMessage + 2);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 25, false, GetProgToken(progPercent)), assertMessage + 3);
-                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 25, false, GetProgToken(progSize)), assertMessage + 4);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progFull, 5, false, GetProgToken(progFull)), assertMessage + 2);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progPercent, 5, false, GetProgToken(progPercent)), assertMessage + 3);
+                await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 5, false, GetProgToken(progSize)), assertMessage + 4);
                 // These progress report assertions are to check that the operation STARTED but was cancelled prior to completion, causing deletion because Restartable mode was not used.
                 Assert.IsFalse(File.Exists(destFile));
             }
