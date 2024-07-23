@@ -95,7 +95,7 @@ namespace RoboSharp
 
         /// <summary>Description of the item as reported by RoboCopy</summary>
         public string FileClass { get; set; }
-        
+
         /// <inheritdoc cref="RoboSharp.FileClassType"/>
         public FileClassType FileClassType { get; set; }
 
@@ -145,21 +145,39 @@ namespace RoboSharp
         }
 
         /// <summary>
-        /// Generates the log line for a failed file operation, using the <see cref="IRoboCommand.Configuration"/> and <see cref="IRoboCommand.LoggingOptions"/>
+        /// Generates the error log line for a failed file operation, using the <see cref="IRoboCommand.Configuration"/> 
         /// </summary>
-        /// <param name="command"></param>
-        /// <returns>"\t    [FAILED]  \t\t    [FileSize]\t[FileName]"</returns>
-        public string ToStringFailed(IRoboCommand command)
+        /// <param name="command">The associated IRobocommand</param>
+        /// <param name="datetime">If not specified, uses DateTime.Now</param>
+        /// <param name="ex">The exception whose error code and message shall be used</param>
+        /// <param name="stepDescription">The description of the step that failed</param>
+        /// <returns>
+        /// With exception provided:
+        /// <br/><c>[DateTime] [Configuration.ErrorToken] [ErrorCode] [stepDescription] [FilePath][Environment.Newline][ex.Message]</c>
+        /// <para/>Without exception:
+        /// <br/><c>[DateTime] [Configuration.ErrorToken] [stepDescription] [FilePath]</c>
+        /// </returns>
+        public string ToStringFailed(IRoboCommand command, Exception ex = null, DateTime? datetime = null, string stepDescription = null)
         {
             if (command is null) throw new ArgumentNullException(nameof(command));
-            if (command.Configuration is null) throw new ArgumentNullException (nameof(command.Configuration));
-            if (command.LoggingOptions is null) throw new ArgumentNullException(nameof (command.LoggingOptions));
-            var logging = command.LoggingOptions;
+            if (command.Configuration is null) throw new ArgumentNullException(nameof(command.Configuration));
             switch (FileClassType)
             {
-                case FileClassType.SystemMessage: return Name;
-                case FileClassType.NewDir: return DirInfoToString(!logging.NoFileSizes);
-                case FileClassType.File: return FileInfoToString(command.Configuration.LogParsing_FailedFile, !logging.NoFileClasses, !logging.NoFileSizes);
+                case FileClassType.SystemMessage:
+                case FileClassType.NewDir:
+                case FileClassType.File:
+                    if (ex is null && string.IsNullOrWhiteSpace(stepDescription))
+                        return $"{datetime ?? DateTime.Now} {command.Configuration.ErrorToken} {Name}";
+                    
+                    else if (ex is null)
+                        return $"{datetime ?? DateTime.Now} {command.Configuration.ErrorToken} {stepDescription} {Name}";
+                    
+                    else if (string.IsNullOrWhiteSpace(stepDescription))
+                        return $"{datetime ?? DateTime.Now} {command.Configuration.ErrorToken} {ex.HResult} {Name}{Environment.NewLine}{ex.Message}";
+
+                    else
+                        return $"{datetime ?? DateTime.Now} {command.Configuration.ErrorToken} {ex.HResult} {stepDescription} {Name}{Environment.NewLine}{ex.Message}";
+
                 default: throw new NotImplementedException("Unknown FileClassType");
             }
         }
@@ -223,7 +241,7 @@ namespace RoboSharp
         /// <inheritdoc cref="TryGetDirectoryClass(RoboSharpConfiguration, out ProcessedDirectoryFlag)"/>
         public bool TryGetFileClass(RoboSharpConfiguration conf, out ProcessedFileFlag flag)
         {
-            foreach(ProcessedFileFlag f in typeof(ProcessedFileFlag).GetEnumValues())
+            foreach (ProcessedFileFlag f in typeof(ProcessedFileFlag).GetEnumValues())
             {
                 if (this.FileClass == conf.GetFileClass(f))
                 {

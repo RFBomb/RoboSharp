@@ -46,7 +46,7 @@ namespace RoboSharp.Results
             if (copyTime.TotalSeconds <= 0) throw new ArgumentException("Copy Time cannot be less than or equal to 0", nameof(copyTime));
 
             BytesPerSec = Decimal.Round(fileLength / (decimal)copyTime.TotalSeconds);
-            MegaBytesPerMin = Decimal.Round(fileLength/ MegaBytePerMinDivisor / (decimal)copyTime.TotalMinutes, 3);
+            MegaBytesPerMin = Decimal.Round(fileLength / MegaBytePerMinDivisor / (decimal)copyTime.TotalMinutes, 3);
         }
 
         #region < Private & Protected Members >
@@ -377,7 +377,7 @@ namespace RoboSharp.Results
                 _divisor -= 1;
                 _combinedBytesPerSecond -= stat.BytesPerSec;
                 _combinedMegabytesPerMinute -= stat.MegaBytesPerMin;
-            }            
+            }
         }
 
         #endregion
@@ -422,8 +422,8 @@ namespace RoboSharp.Results
         /// <param name="timeSpan">the time span over which the bytes were copied ( EndDate - StartDate )</param>
         public void Average(long fileLength, TimeSpan timeSpan)
         {
+            if (timeSpan.TotalSeconds <= 0) return; // instantaneous copies are ignored to prevent div/0 errors
             if (fileLength < 0) throw new ArgumentException("File Length cannot be less than 0", nameof(fileLength));
-            if (timeSpan.TotalSeconds <= 0) throw new ArgumentException("timeSpan cannot be less than or equal to 0", nameof(timeSpan));
 
             _divisor += 1;
             _combinedBytesPerSecond += Decimal.Round(fileLength / (decimal)timeSpan.TotalSeconds, 3);
