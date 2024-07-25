@@ -217,6 +217,7 @@ namespace RoboSharp.Extensions
             var moveOp = Task.Run(async () =>
             {
                 LoggingOptions.DeleteLogFiles();
+                LoggingOptions.EnsureLogFileDirectoriesCreated();
                 if (LoggingOptions.NoJobHeader is false) CreateHeader(resultsBuilder);
 
                 List<Task> queue = new List<Task>();
@@ -239,6 +240,10 @@ namespace RoboSharp.Extensions
 
                     //Check if it can copy, or if there is a need to copy.
                     bool canCopy = !copier.IsExtra() && (copier.IsLonely() || !(copier.IsSameDate() && copier.Source.Length == copier.Destination.Length));
+                    if (canCopy && SelectionOptions.ExcludeNewer)
+                        canCopy = !copier.IsDestinationNewer();
+                    if (canCopy && SelectionOptions.ExcludeOlder)
+                        canCopy = !copier.IsSourceNewer();
 
                     //Add the task to the list
                     if (canCopy)

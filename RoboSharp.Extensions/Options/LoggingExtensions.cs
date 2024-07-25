@@ -33,6 +33,26 @@ namespace RoboSharp.Extensions.Options
         }
 
         /// <summary>
+        /// Ensures that the directories for each log path are created (required to prevent errors when using <see cref="AppendToLogs(LoggingOptions, string[])"/>
+        /// </summary>
+        /// <param name="options"></param>
+        public static void EnsureLogFileDirectoriesCreated(this LoggingOptions options)
+        {
+            if (options is null) throw new ArgumentNullException(nameof(options));
+            if (!string.IsNullOrWhiteSpace(options.UnicodeLogPath))
+                Directory.CreateDirectory(Path.GetDirectoryName(options.UnicodeLogPath));
+
+            if (!string.IsNullOrWhiteSpace(options.AppendUnicodeLogPath))
+                Directory.CreateDirectory(Path.GetDirectoryName(options.AppendUnicodeLogPath));
+
+            if (!string.IsNullOrWhiteSpace(options.LogPath))
+                Directory.CreateDirectory(Path.GetDirectoryName(options.LogPath));
+
+            if (!string.IsNullOrWhiteSpace(options.AppendLogPath))
+                Directory.CreateDirectory(Path.GetDirectoryName(options.AppendLogPath));
+        }
+
+        /// <summary>
         /// Calls <see cref="File.WriteAllLines(string, IEnumerable{string})"/> for each of the logging paths.
         /// Checks each of the log paths to ensure the lines are not appended multiple times on the same path.
         /// </summary>
@@ -41,28 +61,29 @@ namespace RoboSharp.Extensions.Options
         /// <param name="defaultEncoding">If not specified, uses <see cref="Encoding.Default"/></param>
         public static void AppendToLogs(this LoggingOptions options, Encoding defaultEncoding = null, params string[] lines)
         {
-
             if (options is null) throw new ArgumentNullException(nameof(options));
+            if (lines.Length == 0) return;
+
             if (!string.IsNullOrWhiteSpace(options.UnicodeLogPath))
-                File.WriteAllLines(options.UnicodeLogPath, lines, Encoding.Unicode);
+                File.AppendAllLines(options.UnicodeLogPath, lines, Encoding.Unicode);
 
             if (IsUniquePath(options, options.AppendUnicodeLogPath, false, false))
-                File.WriteAllLines(options.AppendUnicodeLogPath, lines, Encoding.Unicode);
+                File.AppendAllLines(options.AppendUnicodeLogPath, lines, Encoding.Unicode);
 
             if (IsUniquePath(options, options.LogPath, true, false))
             {
                 if (options.OutputAsUnicode)
-                    File.WriteAllLines(options.LogPath, lines, Encoding.Unicode);
+                    File.AppendAllLines(options.LogPath, lines, Encoding.Unicode);
                 else
-                    File.WriteAllLines(options.LogPath, lines, defaultEncoding ?? Encoding.Default);
+                    File.AppendAllLines(options.LogPath, lines, defaultEncoding ?? Encoding.Default);
             }
 
             if (IsUniquePath(options, options.AppendLogPath, true, true))
             {
                 if (options.OutputAsUnicode)
-                    File.WriteAllLines(options.AppendLogPath, lines, Encoding.Unicode);
+                    File.AppendAllLines(options.AppendLogPath, lines, Encoding.Unicode);
                 else
-                    File.WriteAllLines(options.AppendLogPath, lines, defaultEncoding ?? Encoding.Default);
+                    File.AppendAllLines(options.AppendLogPath, lines, defaultEncoding ?? Encoding.Default);
             }
         }
 

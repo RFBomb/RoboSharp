@@ -454,7 +454,7 @@ namespace RoboSharp
         /// </remarks>
         public static bool IsPathFullyQualified(this string path)
         {
-            if (path is null) throw new ArgumentNullException(nameof(path));
+            if (path is null) return false;
             if (path.Length < 3) return false; //There is no way to specify a fixed path with one character (or less).
             if (path.Length >= 3 && IsValidDriveChar(path[0]) && path[1] == System.IO.Path.VolumeSeparatorChar && IsDirectorySeperator(path[2])) return true; //Check for standard paths. C:\
             if (path.Length >= 3 && IsDirectorySeperator(path[0]) && IsDirectorySeperator(path[1])) return true; //This is start of a UNC path

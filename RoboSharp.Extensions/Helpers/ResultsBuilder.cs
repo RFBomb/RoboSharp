@@ -389,7 +389,7 @@ namespace RoboSharp.Extensions.Helpers
                     int GetLargerValue(int length1, int length2) => length1 > length2 ? length1 : length2;
                     int length = GetLargerValue(name.Length, bytes.ToString().Length);
                     length = GetLargerValue(length, files.ToString().Length);
-                    return GetLargerValue(length, dirs.ToString().Length);
+                    return GetLargerValue(length, dirs.ToString().Length) + 3;
                 }
                 sizes.Add(GetColumnSize("Total", ProgressEstimator.BytesStatistic.Total, ProgressEstimator.FilesStatistic.Total, ProgressEstimator.DirectoriesStatistic.Total));
                 sizes.Add(GetColumnSize("Copied", ProgressEstimator.BytesStatistic.Copied, ProgressEstimator.FilesStatistic.Copied, ProgressEstimator.DirectoriesStatistic.Copied));
@@ -399,15 +399,12 @@ namespace RoboSharp.Extensions.Helpers
                 sizes.Add(GetColumnSize("Extras", ProgressEstimator.BytesStatistic.Extras, ProgressEstimator.FilesStatistic.Extras, ProgressEstimator.DirectoriesStatistic.Extras));
                 return sizes.ToArray();
             }
-            string RightAlign(int columnSize, string value)
-            {
-                return value.PadLeft(columnSize);
-            }
+            string RightAlign(int columnSize, string value) => value.PadLeft(columnSize);
             string Align(int columnSize, long value) => RightAlign(columnSize, value.ToString());
 
             int[] ColSizes = GetColumnSizes();
-            string SummaryLine() => string.Format("    {0}{1}\t{2}\t{3}\t{4}\t{5}\t{6}", PadHeader(""), RightAlign(ColSizes[0], "Total"), RightAlign(ColSizes[1], "Copied"), RightAlign(ColSizes[2], "Skipped"), RightAlign(ColSizes[3], "Mismatch"), RightAlign(ColSizes[4], "FAILED"), RightAlign(ColSizes[5], "Extras"));
-            string Tabulator(string name, IStatistic stat) => string.Format("{0} : {1}\t{2}\t{3}\t{4}\t{5}\t{6}", PadHeader(name), Align(ColSizes[0], stat.Total), Align(ColSizes[1], stat.Copied), Align(ColSizes[2], stat.Skipped), Align(ColSizes[3], stat.Mismatch), Align(ColSizes[4], stat.Failed), Align(ColSizes[5], stat.Extras));
+            string SummaryLine() => string.Format("            {0}{1}{2}{3}{4}{5}", RightAlign(ColSizes[0], "Total"), RightAlign(ColSizes[1], "Copied"), RightAlign(ColSizes[2], "Skipped"), RightAlign(ColSizes[3], "Mismatch"), RightAlign(ColSizes[4], "FAILED"), RightAlign(ColSizes[5], "Extras"));
+            string Tabulator(string name, IStatistic stat) => string.Format("{0} : {1}{2}{3}{4}{5}{6}", PadHeader(name), Align(ColSizes[0], stat.Total), Align(ColSizes[1], stat.Copied), Align(ColSizes[2], stat.Skipped), Align(ColSizes[3], stat.Mismatch), Align(ColSizes[4], stat.Failed), Align(ColSizes[5], stat.Extras));
 
             if (IsSummaryWritten) return;
             EndTime = DateTime.Now;
