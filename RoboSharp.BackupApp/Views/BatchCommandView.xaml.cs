@@ -12,19 +12,22 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.IO;
-using RoboSharp.Interfaces;
 
 namespace RoboSharp.BackupApp.Views
 {
     /// <summary>
-    /// Interaction logic for MultiJob_CommandProgressIndicator.xaml
+    /// Interaction logic for BatchCommand.xaml
     /// </summary>
-    public partial class CommandProgressView : UserControl
+    public partial class BatchCommandView : UserControl
     {
-        public CommandProgressView()
+        public BatchCommandView()
         {
             InitializeComponent();
+        }
+
+        private void IsNumeric_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !MainWindow.IsInt(e.Text);
         }
     }
 }

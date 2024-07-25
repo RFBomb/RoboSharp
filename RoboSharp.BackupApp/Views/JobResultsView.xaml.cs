@@ -12,19 +12,18 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.IO;
-using RoboSharp.Interfaces;
 
 namespace RoboSharp.BackupApp.Views
 {
     /// <summary>
     /// Interaction logic for MultiJob_CommandProgressIndicator.xaml
     /// </summary>
-    public partial class CommandProgressView : UserControl
+    public partial class JobResultsView : ScrollViewer
     {
-        public CommandProgressView()
+        public JobResultsView()
         {
             InitializeComponent();
         }
     }
 }
+
