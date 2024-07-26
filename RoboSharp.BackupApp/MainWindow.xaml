@@ -10,7 +10,7 @@
         xmlns:views="clr-namespace:RoboSharp.BackupApp.Views"
         xmlns:viewmodels="clr-namespace:RoboSharp.BackupApp.ViewModels"
         d:DataContext="{d:DesignInstance IsDesignTimeCreatable=False, Type=viewmodels:MainWindowViewModel}"
-        Title="Backup App" Height="700" Width="750" ResizeMode="CanResizeWithGrip" MinWidth="750" MinHeight="650" 
+        Title="Backup App" ResizeMode="CanResizeWithGrip" MinWidth="750" MinHeight="650" SizeToContent="Width" 
     >
     <Window.Resources>
         <cv:StringToIntConverter x:Key="IntConverter"/>
@@ -23,61 +23,66 @@
                 <Grid>
                     <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="OptionsGrid" Height="auto">
-                            <!-- Styles -->
-                            <StackPanel.Resources>
-                                <Style TargetType="StackPanel" x:Key="userInputs">
-                                    <Setter Property="Orientation" Value="Horizontal"/>
-                                    <Setter Property="Margin" Value="10,10,10,0"/>
-                                </Style>
-                                <Style TargetType="TextBlock" x:Key="userInputTxtBlock">
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                                    <Setter Property="TextWrapping" Value="NoWrap"/>
-                                    <Setter Property="Width" Value="110"/>
-                                </Style>
-                                <Style TargetType="TextBox" x:Key="userInputTextBox">
-                                    <Setter Property="Margin" Value="10,0"/>
-                                    <Setter Property="MinWidth" Value="175"/>
-                                    <Setter Property="MaxWidth" Value="600"/>
-                                    <Setter Property="Height" Value="23"/>
-                                </Style>
-                                <Style TargetType="Button" x:Key="userInputButton">
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="Padding" Value="0,5"/>
-                                    <Setter Property="Width" Value="100"/>
-                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                                </Style>
-                            </StackPanel.Resources>
-                            <!-- Source -->
-                            <StackPanel Style="{StaticResource userInputs}">
-                                <TextBlock Text="Source" Style="{StaticResource userInputTxtBlock}" />
-                                <TextBox x:Name="Source" Text="{Binding CommandGenerator.Command.CopyOptions.Source}" Width="400" Style="{StaticResource userInputTextBox}"/>
-                                <Button Content="Browse" Command="{Binding CommandGenerator.BtnSelectSourceCommand}" Style="{StaticResource userInputButton}" />
-                            </StackPanel>
-                            <!-- Destination -->
-                            <StackPanel Style="{StaticResource userInputs}">
-                                <TextBlock Text="Destination" Style="{StaticResource userInputTxtBlock}"/>
-                                <TextBox x:Name="Destination" Text="{Binding CommandGenerator.Command.CopyOptions.Destination}" Width="400" Style="{StaticResource userInputTextBox}" />
-                                <Button x:Name="DestinationBrowseButton" Content="Browse"  Command="{Binding CommandGenerator.BtnSelectDestinationCommand}" Style="{StaticResource userInputButton}"/>
-                            </StackPanel>
-                            <!-- RoboCommandParser.Parse -->
-                            <StackPanel Style="{StaticResource userInputs}" DataContext="{Binding CommandGenerator}">
-                                <TextBlock Text="Command Parsing" Style="{StaticResource userInputTxtBlock}"/>
-                                <TextBox Text="{Binding ParseCommandText, UpdateSourceTrigger=PropertyChanged}" Width="400" ToolTip="Paste a valid RoboCopy string here to parse it" Style="{StaticResource userInputTextBox}" />
-                                <Button Command="{Binding BtnParseCommandCommand}" Content="Parse" ToolTip="Parse the input string" Style="{StaticResource userInputButton}"/>
-                            </StackPanel>
-                            <!-- RoboCommandParser.ParseOptions -->
-                            <StackPanel Style="{StaticResource userInputs}" DataContext="{Binding CommandGenerator}">
-                                <TextBlock Text="Option Parsing" Style="{StaticResource userInputTxtBlock}"/>
-                                <TextBox Text="{Binding ParseCommandOptionsText, UpdateSourceTrigger=PropertyChanged}" Width="400" ToolTip="Parse Options Only - Must not contain 'robocopy', a source, or a destination." Style="{StaticResource userInputTextBox}" />
-                                <Button Command="{Binding BtnParseCommandOptionsCommand}" Content="Parse Options" ToolTip="Parse the input string"  Style="{StaticResource userInputButton}"/>
-                            </StackPanel>
-                            <!-- Job Name -->
-                            <StackPanel Style="{StaticResource userInputs}">
-                                <TextBlock Text="Job Name (Optional)" Style="{StaticResource userInputTxtBlock}"/>
-                                <TextBox Text="{Binding CommandGenerator.JobNameTextbox}"  Width="175" Style="{StaticResource userInputTextBox}"/>
-                            </StackPanel>
+                            <!-- Source / Destination / Parsing -->
+                            <Grid DataContext="{Binding CommandGenerator}" Margin="15,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="auto"/>
+                                    <ColumnDefinition Width="auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="auto"/>
+                                    <RowDefinition Height="auto"/>
+                                    <RowDefinition Height="auto"/>
+                                    <RowDefinition Height="auto"/>
+                                    <RowDefinition Height="auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Grid.Column" Value="0"/>
+                                        <Setter Property="Margin" Value="0"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="TextWrapping" Value="NoWrap"/>
+                                        <Setter Property="Width" Value="110"/>
+                                    </Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Grid.Column" Value="1"/>
+                                        <Setter Property="Grid.ColumnSpan" Value="2"/>
+                                        <Setter Property="Margin" Value="10,0"/>
+                                        <Setter Property="MinWidth" Value="200"/>
+                                        <Setter Property="Height" Value="23"/>
+                                    </Style>
+                                    <Style TargetType="Button" >
+                                        <Setter Property="Grid.Column" Value="4"/>
+                                        <Setter Property="Margin" Value="7"/>
+                                        <Setter Property="Padding" Value="0,5"/>
+                                        <Setter Property="Width" Value="100"/>
+                                        <Setter Property="HorizontalAlignment" Value="Left"/>
+                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    </Style>
+                                </Grid.Resources>
+                                <!-- Source -->
+                                <TextBlock Grid.Row="0" Text="Source" />
+                                <TextBox Grid.Row="0" Text="{Binding Command.CopyOptions.Source}" />
+                                <Button Grid.Row="0" Content="Browse" Command="{Binding BtnSelectSourceCommand}" />
+                                <!-- Destination -->
+                                <TextBlock Grid.Row="1" Text="Destination" />
+                                <TextBox Grid.Row="1" Text="{Binding Command.CopyOptions.Destination}" />
+                                <Button Grid.Row="1" Content="Browse"  Command="{Binding BtnSelectDestinationCommand}" />
+                                <!-- RoboCommandParser.Parse -->
+                                <TextBlock Grid.Row="2" Text="Command Parsing" />
+                                <TextBox Grid.Row="2" Text="{Binding ParseCommandText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Paste a valid RoboCopy string here to parse it" />
+                                <Button Grid.Row="2" Command="{Binding BtnParseCommandCommand}" Content="Parse" ToolTip="Parse the input string" />
+                                <!-- RoboCommandParser.ParseOptions -->
+                                <TextBlock Grid.Row="3" Text="Option Parsing" />
+                                <TextBox Grid.Row="3" Text="{Binding ParseCommandOptionsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Parse Options Only - Must not contain 'robocopy', a source, or a destination." />
+                                <Button Grid.Row="3" Command="{Binding BtnParseCommandOptionsCommand}" Content="Parse Options" ToolTip="Parse the input string"  />
+                                <!-- Job Name -->
+                                <TextBlock Grid.Row="4" Text="Job Name (Optional)" />
+                                <TextBox Grid.Row="4" Text="{Binding JobNameTextbox}"  Width="175" Grid.ColumnSpan="1" />
+                            </Grid>
                             <!-- Job Options -->
                             <StackPanel Margin="34,10,20,10" DataContext="{Binding CommandGenerator}" Name="CopyOptionsExpander">
                                 <Expander Background="LightBlue" Header="Copy Options" DataContext="{Binding Command.CopyOptions}">
@@ -276,12 +281,30 @@
                                 </Expander>
                             </StackPanel>
                             <!-- Single Job GroupBox -->
-                            <GroupBox Header="Single Job ( RoboCommand )"  Grid.Row="5" Margin="34,0,0,5" Height="60" Width="Auto"  HorizontalAlignment="Left" >
+                            <GroupBox Header="Single Job ( RoboCommand )"  Grid.Row="5" Margin="34,0,0,5" Height="Auto" Width="Auto"  HorizontalAlignment="Left" >
                                 <Grid>
-                                    <Button Content="Load Job" HorizontalAlignment="Left" Margin="20,10,30,0" VerticalAlignment="Top" Width="75" Command="{Binding BtnLoadJobCommand}" />
-                                    <Button Content="Save Job" HorizontalAlignment="Left" Margin="115,10,30,0" VerticalAlignment="Top" Width="75" Command="{Binding BtnSaveJobCommand}"/>
-                                    <Button Content="Start Job" HorizontalAlignment="Left" Margin="205,10,20,0" VerticalAlignment="Top" Width="75" Command="{Binding BtnStartJobCommand}" Click="StartButton_Click"/>
-                                    <Button Content="Reset Options" HorizontalAlignment="Left" Margin="295,10,20,0" VerticalAlignment="Top" Width="75" Command="{Binding CommandGenerator.ResetOptionsCommand}"/>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.Resources>
+                                        <Style TargetType="Button">
+                                            <Setter Property="HorizontalAlignment" Value="Left"/>
+                                            <Setter Property="VerticalAlignment" Value="Top"/>
+                                            <Setter Property="MinWidth" Value="75"/>
+                                            <Setter Property="Padding" Value="10,2"/>
+                                            <Setter Property="Margin" Value="15,5"/>
+                                            <Setter Property="Height" Value="auto"/>
+                                        </Style>
+                                    </Grid.Resources>
+                                    <Button Content="Reset Options" Grid.Column="0"  Command="{Binding CommandGenerator.ResetOptionsCommand}" ToolTip="Reset all options to their default values"/>
+                                    <Button Content="Merge Job" Grid.Column="1" Command="{Binding MergeJobFileCommand}" ToolTip="Load an RCJ file, and merge its options with the currently selected options" />
+                                    <Button Content="Load Job" Grid.Column="2" Command="{Binding BtnLoadJobCommand}" ToolTip="Load an RCJ file. Only options specified by the file will be applied." />
+                                    <Button Content="Save Job" Grid.Column="3" Command="{Binding BtnSaveJobCommand}" ToolTip="Save the currently selected options into a new RCJ file."/>
+                                    <Button Content="Start Job" Grid.Column="4" Command="{Binding BtnStartJobCommand}" Click="StartButton_Click" ToolTip="Run the robocopy operation"/>
                                 </Grid>
                             </GroupBox>
                             <!-- Multi-Job GroupBox -->
@@ -292,6 +315,7 @@
                                             <RowDefinition Height="5"/>
                                             <RowDefinition Height="50"/>
                                             <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="200"/>
                                         </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
@@ -300,40 +324,57 @@
                                             <ColumnDefinition Width="120"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button Command="{Binding BtnAddToRoboQueueCommand}" Content="Add to Queue" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
-                                        <Button Command="{Binding BtnReplaceRoboQueueCommandCommand}" Content="Replace Selected"  Grid.Row="1" Grid.Column="1" Margin="10" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
-                                        <Button Command="{Binding RoboQueueViewModel.BtnRemoveSelectedItemCommand}" Content="Remove Selected" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
-                                        <Button Command="{Binding BtnLoadRoboQueueCommand}" Content="Modify Selected" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Top" Width="98" />
-                                        <!-- Concurrent Jobs -->
-                                        <Label x:Name="lbloncurrentJobs" Content="Commands to run at once (0 = all):" Grid.Row="3" Grid.Column="2" Margin="0,0,0,73" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
-                                        <ComboBox SelectedValue="{Binding RoboQueueViewModel.MaxConcurrentJobs}" ItemsSource="{Binding RoboQueueViewModel.Ints}" Grid.Row="3" Grid.Column="3"  Margin="34,0,0,46"  HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="40" RenderTransformOrigin="-1.375,0.727" />
-                                        <!-- Start Queue Options -->
-                                        <CheckBox IsChecked="{Binding RoboQueueViewModel.RunAsListOnly}" Content="ListOnly Mode"  Grid.Row="3" Grid.Column="2"  Margin="5,0,0,46" HorizontalAlignment="Left" VerticalAlignment="Bottom" FlowDirection="RightToLeft" RenderTransformOrigin="0.175,-1.267" />
-                                        <Button Command="{Binding RoboQueueViewModel.BtnStartStopQueueCommand}" Content="Start Job Queue" Grid.Row="3" Grid.Column="2" Margin="96,0,38,10"  HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="98" Grid.ColumnSpan="2" Click="RoboQueueStart_Click"/>
-                                        <!-- Listbox Header-->
-                                        <Grid Margin="38,0,0,0" Grid.Row="2" Width="410" VerticalAlignment="Top" HorizontalAlignment="Left" Grid.ColumnSpan="4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition SharedSizeGroup="ListBoxColumn1"/>
-                                                <ColumnDefinition SharedSizeGroup="ListBoxColumn2"/>
-                                                <ColumnDefinition SharedSizeGroup="ListBoxColumn3"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Label Grid.Column="0" Content="Job Name" HorizontalAlignment="Left" Width="Auto" Visibility="Visible"/>
-                                            <Label Grid.Column="2" Content="Parameters" HorizontalAlignment="Left" Width="Auto"/>
-                                        </Grid>
+                                        <Button Content="Add to Queue" Command="{Binding BtnAddToRoboQueueCommand}" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
+                                        <Button Content="Replace Selected"  Command="{Binding BtnReplaceRoboQueueCommandCommand}" Grid.Row="1" Grid.Column="1" Margin="10" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
+                                        <Button Content="Remove Selected" Command="{Binding RoboQueueViewModel.BtnRemoveSelectedItemCommand}" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Width="98" />
+                                        <Button Content="Modify Selected" Command="{Binding BtnLoadRoboQueueCommand}" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Top" Width="98" />
+                                        <GroupBox Header="Queue Options" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2" Margin="8,15,7,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="auto"/>
+                                                    <ColumnDefinition Width="auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="auto"/>
+                                                    <RowDefinition Height="auto"/>
+                                                    <RowDefinition Height="25"/>
+                                                    <RowDefinition Height="auto"/>
+                                                </Grid.RowDefinitions>
+                                                <!-- Concurrent Jobs -->
+                                                <Label Content="Commands to run at once (0 = all):"  Margin="0,0,45,0"
+                                                    Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                                <ComboBox 
+                                                    Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="40"
+                                                    SelectedValue="{Binding RoboQueueViewModel.MaxConcurrentJobs}" ItemsSource="{Binding RoboQueueViewModel.Ints}" />
+                                                <!-- Start Queue Options -->
+                                                <CheckBox 
+                                                    Grid.Row="1" Grid.Column="0" Margin="5" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" FlowDirection="RightToLeft"
+                                                    Content="ListOnly Mode"  IsChecked="{Binding RoboQueueViewModel.RunAsListOnly}" />
+                                                <Button 
+                                                    Grid.Row="3" Grid.Column="1" Padding="10,3" Margin="10,5" HorizontalAlignment="Center" VerticalAlignment="Bottom" 
+                                                    Content="Start Job Queue" Command="{Binding RoboQueueViewModel.BtnStartStopQueueCommand}" Click="RoboQueueStart_Click"/>
+                                            </Grid>
+                                        </GroupBox>
                                         <!-- https://stackoverflow.com/questions/8911026/multicolumn-listbox-in-wpf -->
-                                        <ListBox ItemsSource="{Binding RoboQueueViewModel.Command}" SelectedItem="{Binding RoboQueueViewModel.SelectedCommand}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0" >
+                                        <ListBox ItemsSource="{Binding RoboQueueViewModel.Command}" SelectedItem="{Binding RoboQueueViewModel.SelectedCommand}" Grid.Row="3" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0" >
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid Height="20">
+                                                    <Grid Margin="3">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="auto"/>
+                                                            <RowDefinition Height="auto"/>
+                                                        </Grid.RowDefinitions>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" SharedSizeGroup="ListBoxColumn1"/>
                                                             <ColumnDefinition Width="15" SharedSizeGroup="ListBoxColumn2"/>
                                                             <ColumnDefinition Width="*" SharedSizeGroup="ListBoxColumn3"/>
                                                         </Grid.ColumnDefinitions>
                                                         <!-- Bind to the NAME property -->
-                                                        <TextBlock Grid.Column="0" Text="{Binding Path=Name}"/>
+                                                        <TextBlock Grid.Row="0" Text="Name: " FontWeight="Bold"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding Path=Name}" FontWeight="Bold"/>
                                                         <!-- Bind to the ToString method-->
-                                                        <TextBlock Grid.Column="2" Text="{Binding}"/>
+                                                        <TextBlock Grid.Row="1" Text="Parameters: " />
+                                                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>
@@ -346,7 +387,7 @@
                                         <CheckBox Content="RoboSharpConfiguration.EnableFileLogging" 
                                                   ToolTip="Record the FileNames into the Results log lines"  
                                                   IsChecked="{Binding CommandGenerator.ConfigurationEnableFileLogging}"
-                                                  FlowDirection="RightToLeft" RenderTransformOrigin="0.175,-1.267"/>
+                                                  FlowDirection="RightToLeft" />
                                     </StackPanel>
                                 </GroupBox>
                             </StackPanel>

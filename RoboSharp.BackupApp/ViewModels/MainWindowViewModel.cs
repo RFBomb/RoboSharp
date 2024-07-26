@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RoboSharp.Extensions.Options;
 using RoboSharp.Interfaces;
 using RoboSharp.Results;
 using System;
@@ -45,6 +46,40 @@ namespace RoboSharp.BackupApp.ViewModels
         [RelayCommand(CanExecute = nameof(CanLoadJob))]
         private void BtnLoadJob()
         {
+            if (LoadJobFile() is JobFile jf)
+            {
+                try
+                {
+                    CommandGenerator.LoadCommand(jf);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(e.Message);
+                }
+            }
+        }
+        
+
+        [RelayCommand(CanExecute = nameof(CanLoadJob))]
+        private void MergeJobFile()
+        {
+            if (LoadJobFile() is JobFile jf)
+            {
+                try
+                {
+                    var cmd = new RoboCommand(CommandGenerator.GetCommand());
+                    cmd.MergeJobFile(jf);
+                    CommandGenerator.LoadCommand(cmd);
+
+                }catch(Exception e) 
+                {
+                    MessageBox.Show(e.Message);
+                }
+            }
+        }
+
+        private JobFile LoadJobFile()
+        {
             var FP = new Microsoft.Win32.OpenFileDialog();
             FP.Filter = RoboSharp.JobFile.JOBFILE_DialogFilter;
             FP.Multiselect = false;
@@ -55,23 +90,22 @@ namespace RoboSharp.BackupApp.ViewModels
                 bool? FilePicked = FP.ShowDialog();
                 if (FilePicked ?? false)
                     JF = JobFile.ParseJobFile(FP.FileName);
-                if (JF != null)
+                if (JF is null)
                 {
-                    var oldCmd = CommandGenerator.GetCommand() as RoboCommand;
-                    oldCmd.MergeJobFile(JF);//Perform Merge Test
-                    CommandGenerator.LoadCommand(JF);
+                    MessageBox.Show("Job File Not Loaded / Not Selected");
+                    return null;
                 }
                 else
                 {
-                    MessageBox.Show("Job File Not Loaded / Not Selected");
+                    return JF;
                 }
             }
-            catch
+            catch(Exception ex)
             {
-
+                MessageBox.Show(ex.Message);
+                return null;
             }
         }
-        private bool CanLoadJob() => true;
 
         [RelayCommand(CanExecute = nameof(CanSaveJob))]
         private async Task BtnSaveJob()
@@ -84,7 +118,15 @@ namespace RoboSharp.BackupApp.ViewModels
                 bool? FilePicked = FP.ShowDialog();
                 if (FilePicked ?? false)
                 {
-                    await (CommandGenerator.GetCommand() as RoboCommand).SaveAsJobFile(FP.FileName, true, true);
+                    var cmd = CommandGenerator.GetCommand();
+                    if (cmd is RoboCommand rc)
+                        await rc.SaveAsJobFile(FP.FileName, true, true);
+                    else if (cmd is JobFile jf)
+                        await jf.Save(FP.FileName, true, true);
+                    else
+                    {
+                        await new JobFile(cmd, FP.FileName).Save();
+                    }
                 }
                 else
                 {
@@ -96,6 +138,8 @@ namespace RoboSharp.BackupApp.ViewModels
 
             }
         }
+        
+        private bool CanLoadJob() => true;
         private bool CanSaveJob() => true;
 
         [RelayCommand(CanExecute = nameof(CanStartJob))]

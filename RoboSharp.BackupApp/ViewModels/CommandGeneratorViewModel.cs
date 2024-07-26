@@ -45,9 +45,18 @@ namespace RoboSharp.BackupApp.ViewModels
 
         public IRoboCommand GetCommand()
         {
-            var cmd = (Command as RoboCommand).Clone();
-            cmd.Name = JobNameTextbox;
-            return cmd;
+            if (Command is RoboCommand rc)
+            {
+                var rc2 = rc.Clone();
+                rc2.Name = JobNameTextbox;
+                return rc2;
+            }
+            else if (Command is JobFile jf)
+            {
+                return jf;
+            }
+            else
+                return Command;
         }
 
         public void LoadCommand(IRoboCommand cmd)
