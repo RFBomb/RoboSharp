@@ -121,10 +121,12 @@ namespace RoboSharp.Extensions.Helpers
 #pragma warning disable CS1591 // Interface provides descriptions
 
         public Task<bool> CopyAsync() => CopyAsync(false, CancellationToken.None);
+        public Task<bool> CopyAsync(CancellationToken token) => CopyAsync(false, token);
         public Task<bool> CopyAsync(bool overwrite) => CopyAsync(overwrite, CancellationToken.None);
         public abstract Task<bool> CopyAsync(bool overwrite, CancellationToken token);
 
         public Task<bool> MoveAsync() => MoveAsync(false, CancellationToken.None);
+        public Task<bool> MoveAsync(CancellationToken token) => CopyAsync(false, token);
         public Task<bool> MoveAsync(bool overwrite) => MoveAsync(overwrite, CancellationToken.None);
         public abstract Task<bool> MoveAsync(bool overwrite, CancellationToken token);
 

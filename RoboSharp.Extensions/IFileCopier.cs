@@ -41,7 +41,12 @@ namespace RoboSharp.Extensions
         void Cancel();
 
         /// <inheritdoc cref="CopyAsync(bool, CancellationToken)"/>
+        /// <remarks>Will not overwrite an existing destination file.</remarks>
         Task<bool> CopyAsync();
+
+        /// <inheritdoc cref="CopyAsync(bool, CancellationToken)"/>
+        /// <remarks>Will not overwrite an existing destination file.</remarks>
+        Task<bool> CopyAsync(CancellationToken token);
 
         /// <inheritdoc cref="CopyAsync(bool, CancellationToken)"/>
         Task<bool> CopyAsync(bool overwrite);
@@ -55,7 +60,12 @@ namespace RoboSharp.Extensions
         Task<bool> CopyAsync(bool overwrite, CancellationToken token);
 
         /// <inheritdoc cref="MoveAsync(bool, CancellationToken)"/>
+        /// <remarks>Will not overwrite an existing destination file.</remarks>
         Task<bool> MoveAsync();
+
+        /// <inheritdoc cref="MoveAsync(bool, CancellationToken)"/>
+        /// <remarks>Will not overwrite an existing destination file.</remarks>
+        Task<bool> MoveAsync(CancellationToken token);
 
         /// <inheritdoc cref="MoveAsync(bool, CancellationToken)"/>
         Task<bool> MoveAsync(bool overwrite);
