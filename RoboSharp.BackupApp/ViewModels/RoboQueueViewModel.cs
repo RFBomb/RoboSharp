@@ -140,7 +140,7 @@ namespace RoboSharp.BackupApp.ViewModels
                 else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
                 {
                     //Remove associated MultiJob_CommandProgressIndicator
-                    foreach (var item in RunningCommands.Where(i => e.OldItems.Contains(i.Command)))
+                    foreach (var item in RunningCommands.Where(i => e.OldItems.Contains(i.Command)).ToArray())
                         RunningCommands.Remove(item);
                 }
             });

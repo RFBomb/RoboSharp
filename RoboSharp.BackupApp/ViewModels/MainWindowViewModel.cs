@@ -175,7 +175,11 @@ namespace RoboSharp.BackupApp.ViewModels
             IRoboCommand cmd = CommandGenerator.GetCommand();
             if (cmd == null) return;
             int i = RoboQueueViewModel.Command.IndexOf(RoboQueueViewModel.SelectedCommand);
-            if (i >= 0)
+            if (object.ReferenceEquals(cmd,RoboQueueViewModel.SelectedCommand))
+            {
+                // nothing to do
+            }
+            else if (i >= 0)
             {
                 RoboQueueViewModel.Command.ReplaceCommand(cmd, i);
             }

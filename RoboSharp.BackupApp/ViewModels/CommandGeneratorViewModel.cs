@@ -45,18 +45,20 @@ namespace RoboSharp.BackupApp.ViewModels
 
         public IRoboCommand GetCommand()
         {
+            UpdateCommandName();
+            return new RoboCommand(Command);
+        }
+
+        private void UpdateCommandName()
+        {
             if (Command is RoboCommand rc)
             {
-                var rc2 = rc.Clone();
-                rc2.Name = JobNameTextbox;
-                return rc2;
+                rc.Name = JobNameTextbox;
             }
             else if (Command is JobFile jf)
             {
-                return jf;
+                jf.Name = JobNameTextbox;
             }
-            else
-                return Command;
         }
 
         public void LoadCommand(IRoboCommand cmd)
@@ -100,6 +102,9 @@ namespace RoboSharp.BackupApp.ViewModels
             if (Command is null) return;
             switch (e.PropertyName)
                 {
+                case nameof(JobNameTextbox):
+                    UpdateCommandName();
+                    break;
                 case nameof(Command):
                     if (string.IsNullOrEmpty(Command?.CopyOptions?.RunHours))
                     {

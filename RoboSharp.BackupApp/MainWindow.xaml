@@ -65,11 +65,11 @@
                                 </Grid.Resources>
                                 <!-- Source -->
                                 <TextBlock Grid.Row="0" Text="Source" />
-                                <TextBox Grid.Row="0" Text="{Binding Command.CopyOptions.Source}" />
-                                <Button Grid.Row="0" Content="Browse" Command="{Binding BtnSelectSourceCommand}" />
+                                <TextBox Grid.Row="0" Text="{Binding Command.CopyOptions.Source}" LostFocus="RefreshQueueListbox"/>
+                                <Button Grid.Row="0" Content="Browse" Command="{Binding BtnSelectSourceCommand}"/>
                                 <!-- Destination -->
                                 <TextBlock Grid.Row="1" Text="Destination" />
-                                <TextBox Grid.Row="1" Text="{Binding Command.CopyOptions.Destination}" />
+                                <TextBox Grid.Row="1" Text="{Binding Command.CopyOptions.Destination}" LostFocus="RefreshQueueListbox"/>
                                 <Button Grid.Row="1" Content="Browse"  Command="{Binding BtnSelectDestinationCommand}" />
                                 <!-- RoboCommandParser.Parse -->
                                 <TextBlock Grid.Row="2" Text="Command Parsing" />
@@ -77,11 +77,11 @@
                                 <Button Grid.Row="2" Command="{Binding BtnParseCommandCommand}" Content="Parse" ToolTip="Parse the input string" />
                                 <!-- RoboCommandParser.ParseOptions -->
                                 <TextBlock Grid.Row="3" Text="Option Parsing" />
-                                <TextBox Grid.Row="3" Text="{Binding ParseCommandOptionsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Parse Options Only - Must not contain 'robocopy', a source, or a destination." />
+                                <TextBox Grid.Row="3" Text="{Binding ParseCommandOptionsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Parse Options Only - Must not contain 'robocopy', a source, or a destination."  />
                                 <Button Grid.Row="3" Command="{Binding BtnParseCommandOptionsCommand}" Content="Parse Options" ToolTip="Parse the input string"  />
                                 <!-- Job Name -->
                                 <TextBlock Grid.Row="4" Text="Job Name (Optional)" />
-                                <TextBox Grid.Row="4" Text="{Binding JobNameTextbox}"  Width="175" Grid.ColumnSpan="1" />
+                                <TextBox Grid.Row="4" Text="{Binding JobNameTextbox}"  Width="175" Grid.ColumnSpan="1" LostFocus="RefreshQueueListbox" />
                             </Grid>
                             <!-- Job Options -->
                             <StackPanel Margin="34,10,20,10" DataContext="{Binding CommandGenerator}" Name="CopyOptionsExpander">
@@ -356,7 +356,10 @@
                                             </Grid>
                                         </GroupBox>
                                         <!-- https://stackoverflow.com/questions/8911026/multicolumn-listbox-in-wpf -->
-                                        <ListBox ItemsSource="{Binding RoboQueueViewModel.Command}" SelectedItem="{Binding RoboQueueViewModel.SelectedCommand}" Grid.Row="3" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0" >
+                                        <ListBox 
+                                            x:Name="RoboQueueListBox1"
+                                            Grid.Row="3" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0" SelectionMode="Single"
+                                            ItemsSource="{Binding RoboQueueViewModel.Command}" SelectedItem="{Binding RoboQueueViewModel.SelectedCommand}"  >
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="3">
@@ -428,10 +431,32 @@
                                         <ColumnDefinition Width="auto" />
                                     </Grid.ColumnDefinitions>
                                     <!-- ListBox / Edit / Remove buttons -->
-                                    <ListBox Grid.Row="0" Grid.Column="0" 
+                                    <ListBox Grid.Row="0" Grid.Column="0" x:Name="RoboQueueListBox2"
                                              ItemsSource="{Binding RoboQueueViewModel.Command}" 
                                              SelectedItem="{Binding RoboQueueViewModel.SelectedCommand}" 
-                                             />
+                                             >
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="3">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="auto"/>
+                                                        <RowDefinition Height="auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="ListBoxColumn1"/>
+                                                        <ColumnDefinition Width="15" SharedSizeGroup="ListBoxColumn2"/>
+                                                        <ColumnDefinition Width="*" SharedSizeGroup="ListBoxColumn3"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <!-- Bind to the NAME property -->
+                                                    <TextBlock Grid.Row="0" Text="Name: " FontWeight="Bold"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Path=Name}" FontWeight="Bold"/>
+                                                    <!-- Bind to the ToString method-->
+                                                    <TextBlock Grid.Row="1" Text="Parameters: " />
+                                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
                                     <!--
                                     <Button x:Name="btnUpdateSelectedJob_Copy" Content="Update Selected" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="98" Click="btn_LoadSelected"/>
                                     <Button x:Name="btnRemoveSelectedJob_Copy" Content="Remove Selected" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="98" Click="btn_RemoveSelected"/>

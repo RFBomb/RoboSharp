@@ -34,8 +34,14 @@ namespace RoboSharp.BackupApp
 
             this.DataContext = new ViewModels.MainWindowViewModel();
 
+            CommandManager.RequerySuggested += CommandManager_RequerySuggested;
             //MultiJob_ListOnlyResults.UpdateDescriptionLblText("List of results from this List-Only Operation.\nThis list is reset every time the queue is restarted.");
             //MultiJob_RunResults.UpdateDescriptionLblText("List of results from this Copy/Move Operation.\nThis list is reset every time the queue is restarted.");
+        }
+
+        private void CommandManager_RequerySuggested(object sender, EventArgs e)
+        {
+            
         }
 
         void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -70,8 +76,16 @@ namespace RoboSharp.BackupApp
             MultiJobExpander_Progress.IsExpanded = true;
         }
 
-        
-        #region < Form Stuff >
+        private void RefreshQueueListBoxes()
+        {
+            if (RoboQueueListBox1.HasItems)
+            {
+                RoboQueueListBox1.Items.Refresh();
+                RoboQueueListBox2.Items.Refresh();
+            }
+        }
+        private void RefreshQueueListbox(object sender, RoutedEventArgs e) => RefreshQueueListBoxes();
+        private void RefreshRoboQueueListBox(object sender, TextChangedEventArgs e) => RefreshQueueListBoxes();
 
         private void IsNumeric_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -97,7 +111,5 @@ namespace RoboSharp.BackupApp
             if (((TextBox)sender).Text.Contains(e.Text))
                 e.Handled = true;
         }
-
-        #endregion
     }
 }
