@@ -27,11 +27,26 @@ namespace RoboSharp.BackupApp.ViewModels
         public BatchCommandViewModel()
         {
             System.Windows.Input.CommandManager.RequerySuggested += CommandManager_RequerySuggested;
+            this.PropertyChanged += BatchCommandViewModel_PropertyChanged;
+        }
+
+        private void BatchCommandViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(SelectedFilePair):
+                    RemoveSelectedFilePairCommand.NotifyCanExecuteChanged();
+                    break;
+                case nameof(SourcePath):
+                case nameof(DestinationDirectoryPath):
+                case nameof(DestinationFileName):
+                    AddFilePairCommand.NotifyCanExecuteChanged();
+                    break;
+            }
         }
 
         private void CommandManager_RequerySuggested(object sender, EventArgs e)
         {
-            RemoveSelectedFilePairCommand.NotifyCanExecuteChanged();
             RunCommandCommand.NotifyCanExecuteChanged();
         }
 
@@ -116,12 +131,10 @@ namespace RoboSharp.BackupApp.ViewModels
             FilePairs.Add(new FilePair(SourcePath, Path.Combine(DestinationDirectoryPath, DestinationFileName)));
             SourcePath = string.Empty;
             DestinationFileName = string.Empty;
-            RunCommandCommand.NotifyCanExecuteChanged();
-            AddFilePairCommand.NotifyCanExecuteChanged();
         }
-
         private bool CanAddFilePair() 
-            => RoboCommandParser.IsPathFullyQualified(SourcePath) 
+            => RoboCommandParser.IsPathFullyQualified(SourcePath)
+            && !String.IsNullOrWhiteSpace(Path.GetFileName(SourcePath))
             && RoboCommandParser.IsPathFullyQualified(DestinationDirectoryPath) 
             && !String.IsNullOrWhiteSpace(DestinationFileName);
 
@@ -137,7 +150,6 @@ namespace RoboSharp.BackupApp.ViewModels
             {
                 SourcePath = result.Item2;
                 DestinationFileName = Path.GetFileName(result.Item2);
-                AddFilePairCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -148,7 +160,6 @@ namespace RoboSharp.BackupApp.ViewModels
             if (result.Item1)
             {
                 DestinationDirectoryPath = result.Item2;
-                AddFilePairCommand.NotifyCanExecuteChanged();
             }
         }
 

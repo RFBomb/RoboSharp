@@ -76,14 +76,14 @@
                             <!-- Source File -->
                             <DockPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" LastChildFill="True">
                                 <TextBlock Text="Source File: " Grid.Column="0"/>
-                                <TextBox Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding SourcePath}"/>
+                                <TextBox Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}"/>
                             </DockPanel>
                             <Button Content="Select File" Grid.Row="0" Command="{Binding SelectSourceCommand}"/>
                             <!-- To File -->
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Destination Directory:" />
-                            <TextBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding DestinationDirectoryPath}" />
+                            <TextBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding DestinationDirectoryPath, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Row="1" Grid.Column="2" Text="New File Name: " />
-                            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding DestinationFileName}" />
+                            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding DestinationFileName, UpdateSourceTrigger=PropertyChanged}" />
                             <Button Grid.Row="1" Grid.RowSpan="2" Content="Select Directory" Command="{Binding SelectDestinationDirectoryCommand}" />
                             <!-- File Collection -->
                             <Button Content="Add To Batch" Grid.Row="4" Grid.Column="5" Command="{Binding AddFilePairCommand}" />
