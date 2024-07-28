@@ -102,7 +102,7 @@ namespace RoboSharp.Extensions
             {
                 Destination.Directory.Create();
                 
-                int bSize = BufferSize;
+                int bSize = Source.Length < BufferSize ? (int)Source.Length : BufferSize;
                 int bytesRead = 0;
                 bool shouldUpdate = false;
                 using Timer updatePeriod = new Timer(o => shouldUpdate = true, null, 0, 100);
@@ -111,6 +111,7 @@ namespace RoboSharp.Extensions
                 
                 try
                 {
+                    writer.SetLength(Source.Length);
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
                     Memory<byte> buffer = new byte[bSize];
                     while ((bytesRead = await reader.ReadAsync(buffer, _cancellationSource.Token)) > 0)
