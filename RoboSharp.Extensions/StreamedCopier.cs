@@ -101,8 +101,8 @@ namespace RoboSharp.Extensions
             try
             {
                 Destination.Directory.Create();
-                
-                int bSize = Source.Length < BufferSize ? (int)Source.Length : BufferSize;
+
+                int bSize = Source.Length > 0 && Source.Length < BufferSize ? (int)Source.Length : BufferSize;
                 int bytesRead = 0;
                 bool shouldUpdate = false;
                 using Timer updatePeriod = new Timer(o => shouldUpdate = true, null, 0, 100);
