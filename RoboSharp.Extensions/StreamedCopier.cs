@@ -46,10 +46,21 @@ namespace RoboSharp.Extensions
 
         }
 
+        private int _bufferSize = DefaultBufferSize;
+
         /// <summary>
-        /// Set the buffer size used for the copy operation
+        /// Set the buffer size in bytes used for the copy operation
         /// </summary>
-        public int BufferSize { get; set; } = DefaultBufferSize;
+        /// <remarks>Default buffer size is 81920 bytes. Value must be greater than 0.</remarks>
+        public int BufferSize
+        {
+            get => _bufferSize;
+            set
+            {
+                if (value > 0 )
+                    _bufferSize = value;
+            }
+        }
 
         /// <inheritdoc/>
         public bool WasCancelled
@@ -72,6 +83,7 @@ namespace RoboSharp.Extensions
         {
             if (IsCopying) throw new InvalidOperationException("Copy Operation already in progress");
             if (_isMoving) throw new InvalidOperationException("Move Operation already in progress");
+            if (BufferSize <= 0) throw new ArgumentOutOfRangeException("Buffer Size must be greater than 0", nameof(BufferSize));
             token.ThrowIfCancellationRequested();
             Refresh();
             if (!Source.Exists) throw new FileNotFoundException("Source File Not Found.", Source.FullName);

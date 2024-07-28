@@ -127,6 +127,10 @@
                         <GroupBox Header="Type Of Copier" Grid.Column="1">
                             <StackPanel>
                                 <RadioButton DataContext="{Binding IFileCopiers[0]}" IsChecked="{Binding IsChecked}" Content="{Binding Name, FallbackValue='StreamedCopier'}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Buffer Size : " Margin="25,5,0,10" VerticalAlignment="Bottom" TextAlignment="Center" />
+                                    <TextBox Text="{Binding StreamedCopierBufferSize, FallbackValue=81920}" ToolTip="The Buffer Syze (in bytes) to use for the StreamedCopier. Default is 81920 bytes." PreviewTextInput="IsNumeric_PreviewTextInput" MinWidth="40" Padding="10,2" VerticalAlignment="Center"/>
+                                </StackPanel>
                                 <RadioButton DataContext="{Binding IFileCopiers[1]}" IsChecked="{Binding IsChecked}" Content="{Binding Name, FallbackValue='CopyFileEx'}" />
                             </StackPanel>
                         </GroupBox>

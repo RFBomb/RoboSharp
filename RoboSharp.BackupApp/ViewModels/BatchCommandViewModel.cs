@@ -13,6 +13,7 @@ using System.Security.Principal;
 using System.Diagnostics;
 using System.IO;
 using RoboSharp.Interfaces;
+using RoboSharp.Extensions.Windows;
 
 namespace RoboSharp.BackupApp.ViewModels
 {
@@ -65,6 +66,7 @@ namespace RoboSharp.BackupApp.ViewModels
         [ObservableProperty] private bool option_NoSummary;
         [ObservableProperty] private bool option_NoHeader;
         [ObservableProperty] private bool option_NoFileList;
+        [ObservableProperty] private int streamedCopierBufferSize = StreamedCopier.DefaultBufferSize;
 
         public RadioButtonHelper[] IFileCopiers { get; } = new RadioButtonHelper[]
         {
@@ -85,7 +87,7 @@ namespace RoboSharp.BackupApp.ViewModels
         {
             IFileCopierFactory factory = IFileCopiers.First(rb => rb.IsChecked).Name switch
             {
-                nameof(IFileCopiersEnum.StreamedCopier) => new StreamedCopierFactory(),
+                nameof(IFileCopiersEnum.StreamedCopier) => new StreamedCopierFactory() { BufferSize = StreamedCopierBufferSize },
                 nameof(IFileCopiersEnum.CopyFileEx) => new RoboSharp.Extensions.Windows.CopyFileExFactory(),
                 _ => throw new NotImplementedException("Unkown Factory Type")
             };

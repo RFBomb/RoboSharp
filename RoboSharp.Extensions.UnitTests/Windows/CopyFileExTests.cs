@@ -319,9 +319,8 @@ namespace RoboSharp.Extensions.Windows.UnitTests
                 await AssertExtensions.AssertThrowsExceptionAsync<OperationCanceledException>(() => CopyFileEx.CopyFileAsync(sourceFile, destFile, progSize, 50, false, cdToken.Token), assertMessage);
                 Assert.IsFalse(File.Exists(destFile));
 
-                // Cancellation Mid-Write
-                // These tests have potential to fail due to race condition with small file size when run on Appveyor (which completes copy operation before cancellation occurs)
-                //if (RoboSharp.UnitTests.Test_Setup.IsRunningOnAppVeyor(false)) return;
+                // Cancellation Mid-Write - These tests have potential to fail due to race condition with small file size when run on Appveyor (which completes copy operation before cancellation occurs)
+                if (RoboSharp.UnitTests.Test_Setup.IsRunningOnAppVeyor(false)) return;
                 
                 assertMessage = "\n Mid-Write Cancellation Test #";
                 CancellationToken GetProgToken<T>(Progress<T> progress)
