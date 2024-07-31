@@ -14,6 +14,11 @@ namespace RoboSharp.Extensions
     /// </summary>
     public class StreamedCopierFactory: AbstractFileCopierFactory<StreamedCopier>, IFileCopierFactory
     {
+        /// <summary>
+        /// A static thread-safe default factory that creates <see cref="StreamedCopier"/> objects and uses the <see cref="StreamedCopier.DefaultBufferSize"/>
+        /// </summary>
+        public static readonly IFileCopierFactory DefaultFactory = new FileCopierFactory<StreamedCopier>((s, d, p) => new StreamedCopier(s, d, p) { BufferSize = StreamedCopier.DefaultBufferSize });
+
         /// <inheritdoc cref="StreamedCopier.BufferSize"/>
         public int BufferSize { get; set; } = StreamedCopier.DefaultBufferSize;
 

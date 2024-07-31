@@ -4,7 +4,7 @@ using RoboSharp.Extensions.Helpers;
 namespace RoboSharp.Extensions
 {
     /// <summary>
-    /// Interface implemented by objects that are derived from <see cref="AbstractFileCopierFactory{T}"/>
+    /// Interface for a factory class that can create <see cref="IFileCopier"/> objects.
     /// </summary>
     public interface IFileCopierFactory
     {

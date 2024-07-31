@@ -3,11 +3,24 @@ using System.IO;
 
 namespace RoboSharp.Extensions.Helpers
 {
+    /// <summary>
+    /// A basic implementation of the <see cref="IFileCopierFactory"/> that accepts a delegate to create a new <see cref="IFileCopier"/>
+    /// </summary>
+    /// <typeparam name="T">The type of <see cref="IFileCopier"/></typeparam>
+    public class FileCopierFactory<T> : AbstractFileCopierFactory<T> where T: class, IFileCopier
+    {
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+        private readonly Func<FileInfo, FileInfo, IDirectoryPair, T> _createFunc;
+        public FileCopierFactory(Func<FileInfo, FileInfo,IDirectoryPair, T> createFunc) => _createFunc = createFunc ?? throw new ArgumentNullException(nameof(createFunc));
+        public override T Create(FileInfo source, FileInfo destination, IDirectoryPair parent) => _createFunc(source, destination, parent);
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+    }
+
 
     /// <summary>
     /// Abstract base implementation of <see cref="IFileCopierFactory"/>
     /// </summary>
-    public abstract class AbstractFileCopierFactory<T> : IFileCopierFactory where T : IFileCopier
+    public abstract class AbstractFileCopierFactory<T> : AbstractFileCopierFactory, IFileCopierFactory where T : IFileCopier
     {
         /// <inheritdoc cref="IFileCopierFactory.Create(IFileSource, string)"/>
         public virtual T Create(IFileSource fileSource, string destination)
@@ -118,6 +131,14 @@ namespace RoboSharp.Extensions.Helpers
         IFileCopier IFileCopierFactory.Create(string source, DirectoryInfo destination, IDirectoryPair parent)
             => Create(source, destination, parent);
 
+    }
+
+    /// <summary>
+    /// Abstract base class that can not be instantiated that provides shared static methods for <see cref="AbstractFileCopierFactory{T}"/>
+    /// </summary>
+    public abstract class AbstractFileCopierFactory
+    {
+        internal AbstractFileCopierFactory() { }
 
         /// <summary>
         /// Evaluate the <paramref name="source"/> Path to ensure its a fully qualified file path
