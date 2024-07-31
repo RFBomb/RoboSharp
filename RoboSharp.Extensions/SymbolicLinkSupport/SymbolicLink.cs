@@ -22,25 +22,23 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
     {
         const string PlatformErrorMessage = "This function relies on Windows P/Invoke. Use .Net 6 or newer for platform comaptibility.";
 
-#if NET6_0_OR_GREATER
-        /// <remarks>Included to avoid breaking target compatibility. Since this is now native to ,Net6 and newer, this simply calls the native method.</remarks>
-        /// <inheritdoc cref="FileSystemInfo.CreateAsSymbolicLink(string)"/>
-        public static void CreateAsSymbolicLink(FileSystemInfo info, string pathToTarget) => info.CreateAsSymbolicLink(pathToTarget);
-#else
         /// <summary>
-        /// Creates a symbolic link at the <see cref="FileSystemInfo.FullName"/> that points to the <paramref name="pathToTarget"/>
+        /// Determines whether this <see cref="FileSystemInfo"/> represents a symbolic link or junction.
         /// </summary>
-        /// <param name="info">the file or directory to create as a link</param>
-        /// <param name="pathToTarget">The path of the symbolic link target.</param>
-        /// <remarks>Requires administractive privileges. Windows only.</remarks>
-        public static void CreateAsSymbolicLink(this FileSystemInfo info, string pathToTarget)
+        /// <param name="info">the system object in question.</param>
+        /// <returns><see langword="true"/> if the <paramref name="info"/> is a symbolic link, otherwise <see langword="false"/>.</returns>
+        public static bool IsSymbolicLink(this FileSystemInfo info)
         {
-            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
             if (info is null) throw new ArgumentNullException(nameof(info));
-            if (string.IsNullOrWhiteSpace(pathToTarget)) throw new ArgumentException("target path can not be empty", nameof(pathToTarget));
-            SymbolicLink.CreateAsSymbolicLink(pathToTarget, info.FullName, info is DirectoryInfo, false);
-        }
+#if NET6_0_OR_GREATER
+            return info.LinkTarget != null;
+#else
+            if (VersionManager.IsPlatformWindows)
+                return info.Attributes.HasFlag(FileAttributes.ReparsePoint) && SymbolicLink.GetReparseDataTarget(info) != null;
+            else
+                return info.Attributes.HasFlag(FileAttributes.ReparsePoint);
 #endif
+        }
 
         /// <summary>
         /// Create a new Symbolic Link at the specified location. Windows Only.
@@ -78,109 +76,54 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
         }
 
-        /// <summary>
-        /// Determines whether this <see cref="FileSystemInfo"/> represents a symbolic link or junction.
-        /// </summary>
-        /// <param name="info">the system object in question.</param>
-        /// <returns><see langword="true"/> if the <paramref name="info"/> is a symbolic link, otherwise <see langword="false"/>.</returns>
-        public static bool IsSymbolicLink(this FileSystemInfo info)
-        {
-            if (info is null) throw new ArgumentNullException(nameof(info));
-#if NET6_0_OR_GREATER
-            return info.LinkTarget != null;
-#else
-            if (VersionManager.IsPlatformWindows)
-                return info.Attributes.HasFlag(FileAttributes.ReparsePoint) && SymbolicLink.GetLinkTarget(info) != null;
-            else
-                return info.Attributes.HasFlag(FileAttributes.ReparsePoint);
-#endif
-        }
 
 #if NET6_0_OR_GREATER
-        /// <returns> The <see cref="FileSystemInfo"/> object that represents that target </returns>
-        /// <inheritdoc cref="FileSystemInfo.ResolveLinkTarget(bool)"/>
-        public static FileSystemInfo ResolveFinalTarget(this FileSystemInfo info)
-        {
-            if (info is null) throw new ArgumentNullException(nameof(info));
-            if (info.LinkTarget is null) return info;
-            //try
-            //{
-                return info.ResolveLinkTarget(true) ?? info;
-            //}
-            //catch (IOException)
-            //{
-            //    // catch too-many-links (ResolveLinkTarget can only handle up to 63 in one go, so fallback to iterating recursively. If a different fault occurs, it will throw again.
-            //    FileSystemInfo prevT = info;
-            //    while (prevT.ResolveLinkTarget(false) is FileInfo T)
-            //        prevT = T;
-            //    return prevT;
-            //}
-        }
 
+        /// <remarks>Exposed here for binary compatibility.<br/>Calls the native method <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/>.</remarks>
+        /// <inheritdoc cref="FileSystemInfo.CreateAsSymbolicLink(string)"/>
+        public static void CreateAsSymbolicLink(FileSystemInfo info, string pathToTarget) => info.CreateAsSymbolicLink(pathToTarget);
+
+        /// <remarks>Exposed here for binary compatibility.<br/>Calls the native method <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/>.</remarks>
         /// <inheritdoc cref="FileSystemInfo.ResolveLinkTarget(bool)"/>
         public static FileSystemInfo? ResolveLinkTarget(FileSystemInfo link, bool returnFinalTarget)
         {
             return link?.ResolveLinkTarget(returnFinalTarget);
-        } 
+        }
 #else
+
         /// <summary>
-        /// Gets the target of the specified link.
+        /// Creates a symbolic link at the <see cref="FileSystemInfo.FullName"/> that points to the <paramref name="pathToTarget"/>
         /// </summary>
-        /// <param name="link"></param>
-        /// <returns>A FileSystemInfo object</returns>
-        /// <exception cref="ArgumentNullException"/>
-        /// <remarks><see href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea"/></remarks>
-        public static FileSystemInfo ResolveFinalTarget(this FileSystemInfo link)
+        /// <param name="info">the file or directory to create as a link</param>
+        /// <param name="pathToTarget">The path of the symbolic link target.</param>
+        /// <remarks>Requires administractive privileges. Windows only.</remarks>
+        public static void CreateAsSymbolicLink(this FileSystemInfo info, string pathToTarget)
         {
-            if (link is null) throw new ArgumentNullException(nameof(link));
-            if (VersionManager.IsPlatformWindows && link.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                string path = GetFinalPathNameByHandle(link);
-                if (link.FullName.Equals(path)) return link;
-                return link is DirectoryInfo ? new DirectoryInfo(path) : new FileInfo(path);
-            }
-            return link;
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+            if (info is null) throw new ArgumentNullException(nameof(info));
+            if (string.IsNullOrWhiteSpace(pathToTarget)) throw new ArgumentException("target path can not be empty", nameof(pathToTarget));
+            SymbolicLink.CreateAsSymbolicLink(pathToTarget, info.FullName, info is DirectoryInfo, false);
         }
 
         /// <summary>
         /// Gets the target of the specified link.
         /// </summary>
-        /// <remarks>This is an extension method to emulate the .Net6 native method of the same name.</remarks>
-        /// <param name="link"></param>
+        /// <remarks>
+        /// This is an extension method to emulate the .Net6 native method of the same name.
+        /// <br/> When accessed in a non-windows environment, always returns null.
+        /// </remarks>
+        /// <param name="link">The <see cref="FileSystemInfo"/> that represents the link to some target</param>
         /// <param name="returnFinalTarget"></param>
         /// <returns>A <see cref="FileSystemInfo"/> that represents the target. If the <paramref name="link"/> is not a target, return <see langword="null"/> </returns>
         /// <exception cref="PlatformNotSupportedException"/>
         public static FileSystemInfo? ResolveLinkTarget(this FileSystemInfo link, bool returnFinalTarget)
         {
-            if (link is null) return null;
-            if (returnFinalTarget) return ResolveFinalTarget(link);
-            if (GetLinkTarget(link) is string target) 
+            if (link is null | !VersionManager.IsPlatformWindows) return null;
+            if ((returnFinalTarget ? GetReparseDataFinalTarget(link) : GetReparseDataTarget(link)) is string target) 
                 return link is DirectoryInfo ? new DirectoryInfo(target) : new FileInfo(target);
             return null;
         }
 #endif
-
-        /// <summary>
-        /// Returns the target of a symlink or juction.
-        /// </summary>
-        /// <returns>The target of the link. If the <paramref name="info"/> is not a link, returns <see langword="null"/></returns>
-        /// <exception cref="ArgumentNullException"/>
-        /// <exception cref="PlatformNotSupportedException"/>
-        internal static string? GetLinkTarget(FileSystemInfo info)
-        {
-            if (info is null) throw new ArgumentNullException(nameof(info));
-#if NET6_0_OR_GREATER
-            return info.LinkTarget;
-#else
-            info.Refresh();
-            if (info.Exists && info.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-                return GetReparseDataTarget(info);
-            }
-            return null;
-#endif
-        }
 
         private static string GetTargetPathRelativeToLink(string linkPath, string targetPath, bool linkAndTargetAreDirectories = false)
         {
@@ -214,30 +157,34 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
         }
 
-        private static SafeFileHandle? GetSafeFileHandle(FileSystemInfo info)
+        private static SafeFileHandle? GetSafeFileHandle(string path, bool isDir)
         {
             const FILE_FLAGS_AND_ATTRIBUTES dirAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_DIRECTORY;
             const FILE_FLAGS_AND_ATTRIBUTES fileAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_NORMAL;
             
             return Win32.PInvoke.CreateFile(
-                    lpFileName: info.FullName,
+                    lpFileName: path,
                     dwDesiredAccess: (uint)GENERIC_ACCESS_RIGHTS.GENERIC_READ,
                     dwShareMode: FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE | FILE_SHARE_MODE.FILE_SHARE_DELETE,
                     lpSecurityAttributes: default,
                     dwCreationDisposition: FILE_CREATION_DISPOSITION.OPEN_EXISTING,
-                    dwFlagsAndAttributes: info is DirectoryInfo ? dirAttr : fileAttr,
+                    dwFlagsAndAttributes: isDir ? dirAttr : fileAttr,
                     hTemplateFile: default);
         }
 
-        /// <remarks>
-        /// If the file resides on a mapped network drive, this will return the UNC path. Ex: L:\SomeFile.txt >> \\Server\Files$\SomeFile.txt
-        /// </remarks>
-        /// <returns>The target path. It may match the supplied <paramref name="info"/> object.</returns>
-        private unsafe static string GetFinalPathNameByHandle(FileSystemInfo info)
+        /// <summary>
+        /// Windows-Only API Call to [ GetFinalPathNameByHandle ].
+        /// <br/><see href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea"/>
+        /// </summary>
+        /// <returns>
+        /// When run with admin privileges, returns the final target path.
+        /// <br/>When run without admin privileges, returns the input file path.
+        /// </returns>
+        public unsafe static string GetFinalPathNameByHandle(FileSystemInfo link)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
 
-            using SafeFileHandle fileHandle = GetSafeFileHandle(info);
+            using SafeFileHandle fileHandle = GetSafeFileHandle(link.FullName, link is DirectoryInfo);
             if (fileHandle.IsInvalid)
             {
                 Marshal.ThrowExceptionForHR(Marshal.GetLastWin32Error());
@@ -291,11 +238,39 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             };
         }
 
-        private unsafe static string? GetReparseDataTarget(FileSystemInfo info)
+        private static string? GetReparseDataFinalTarget(FileSystemInfo link)
+        {
+            // first link
+            string targetPath = GetReparseDataTarget(link.FullName, link is DirectoryInfo);
+            if (targetPath is null) return null;
+            // follow the trail
+            while(File.GetAttributes(targetPath).HasFlag(FileAttributes.ReparsePoint) && GetReparseDataTarget(targetPath, link is DirectoryInfo) is string nextTarget)
+            {
+                targetPath = nextTarget;
+            }
+            return targetPath;
+        }
+
+        /// <inheritdoc cref="GetReparseDataTarget(string, bool)"/>
+        public static string? GetReparseDataTarget(FileSystemInfo link) => GetReparseDataTarget(link.FullName, link is DirectoryInfo);
+
+        /// <summary>
+        /// Retrieve the target for the specified <paramref name="link"/>
+        /// </summary>
+        /// <param name="link">The path to the link, whose target shall be retrieved.</param>
+        /// <param name="isDir">set <see langword="true"/> if this is path represents a Directory</param>
+        /// <returns>
+        /// If the <paramref name="link"/> represents a symbolic link, this will return the target path.
+        /// Otherwise returns <see langword="null"/> .
+        /// </returns>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="PlatformNotSupportedException"></exception>
+        public unsafe static string? GetReparseDataTarget(string link, bool isDir)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
 
-            using SafeFileHandle fileHandle = GetSafeFileHandle(info);
+            using SafeFileHandle fileHandle = GetSafeFileHandle(link, isDir);
             if (fileHandle.IsInvalid)
             {
                 Marshal.ThrowExceptionForHR(Marshal.GetLastWin32Error());

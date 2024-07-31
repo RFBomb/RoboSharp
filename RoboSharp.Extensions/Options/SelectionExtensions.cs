@@ -529,11 +529,7 @@ namespace RoboSharp.Extensions.Options
         {
             if (!Directory.Exists(directory)) return true;
             if (options.ExcludeJunctionPoints | options.ExcludeJunctionPointsForDirectories)
-#if NET6_0_OR_GREATER
                 return new DirectoryInfo(directory).IsSymbolicLink();
-#else
-                return File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint);
-#endif
             else
                 return false;
         }
