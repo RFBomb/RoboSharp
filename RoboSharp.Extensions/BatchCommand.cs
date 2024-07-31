@@ -31,7 +31,14 @@ namespace RoboSharp.Extensions
         private bool disposedValue;
 
         /// <summary>
-        /// Create a new FileCopierCommand
+        /// Create a new <see cref="BatchCommand"/>.
+        /// <br/>When running on a windows platform, uses <see cref="Windows.CopyFileExFactory"/>. 
+        /// <br/>Otherwise falls back to <see cref="StreamedCopierFactory.DefaultFactory"/>.
+        /// </summary>
+        public BatchCommand() : this(VersionManager.IsPlatformWindows ? new Windows.CopyFileExFactory() : StreamedCopierFactory.DefaultFactory) { }
+
+        /// <summary>
+        /// Create a new <see cref="IFileCopierFactory"/> using the specified <paramref name="copierFactory"/>
         /// </summary>
         /// <param name="copierFactory">The factory used to create additional copiers</param>`
         public BatchCommand(IFileCopierFactory copierFactory) : base()
