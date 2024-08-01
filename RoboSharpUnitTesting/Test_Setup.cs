@@ -24,7 +24,8 @@ namespace RoboSharp.UnitTests
         {
             var assy = System.Reflection.Assembly.GetExecutingAssembly();
             var env = assy.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>();
-            Console.WriteLine($"Environment : {env.FrameworkName} {env.FrameworkDisplayName} : \nImageRuntimeVersion:{assy.ImageRuntimeVersion}");
+            string div = "----------------------";
+            Console.WriteLine($"{div}\nEnvironment : {env.FrameworkName} {env.FrameworkDisplayName} : \nImageRuntimeVersion:{assy.ImageRuntimeVersion}\n{div}\n");
         }
 
         /// <summary>

@@ -27,6 +27,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// </summary>
         /// <param name="info">the system object in question.</param>
         /// <returns><see langword="true"/> if the <paramref name="info"/> is a symbolic link, otherwise <see langword="false"/>.</returns>
+        /// <remarks>.Net6 and newer uses the native FileSystemInfo.LinkTarget property</remarks>
         public static bool IsSymbolicLink(this FileSystemInfo info)
         {
             if (info is null) throw new ArgumentNullException(nameof(info));
@@ -41,28 +42,47 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         }
 
         /// <summary>
-        /// Create a new Symbolic Link at the specified location. Windows Only.
+        /// Evaluate the REPARSE_DATA_BUFFER to determine if this path represents a symbolic link or junction
         /// </summary>
-        /// <param name="linkPath">The path the link shall reside at</param>
-        /// <param name="targetPath">The path of the target</param>
+        /// <returns><see langword="true"/> if the link has <see cref="FileAttributes.ReparsePoint"/> and a link was able to be resolved. Otherwise <see langword="false"/></returns>
+        /// <inheritdoc cref="SymbolicLink.GetReparseDataTarget(string, bool)"/>
+        public static bool IsSymbolicLink(string link, bool isDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(link)) throw new ArgumentNullException(nameof(link));
+            if (!File.GetAttributes(link).HasFlag(FileAttributes.ReparsePoint)) return false;
+            if (!VersionManager.IsPlatformWindows) return true;
+            return SymbolicLink.GetReparseDataTarget(link, isDirectory) != null;
+        }
+
+        /// <summary>
+        /// Create a new Symbolic Link at the specified location. 
+        /// <br/>This uses the Windows API <see href="https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-createsymboliclinkw#">CreateSymbolicLinkW</see>
+        /// to create the symbolic link.
+        /// </summary>
+        /// <param name="link"><inheritdoc cref="Win32.PInvoke.CreateSymbolicLink(string, string, SYMBOLIC_LINK_FLAGS)" path="/param[@name='lpSymlinkFileName']"/></param>
+        /// <param name="pathToTarget"><inheritdoc cref="Win32.PInvoke.CreateSymbolicLink(string, string, SYMBOLIC_LINK_FLAGS)" path="/param[@name='lpTargetFileName']"/></param>
         /// <param name="isDirectory">set TRUE if creating a link to a directory, otherwise this will be a link to a file.</param>
-        /// <param name="makeTargetPathRelative">
+        /// <param name="makeTargetRelative">
         /// Make the link relative to the target. Example:
-        /// <br/>Target Path = "D:\Root\SomeDir\SomeFile.txt"
-        /// <br/>Link Path = "D:\"
-        /// <br/> Result Target = "Root\SomeDir\SomeFile.txt"
+        /// <br/>-- Target File Path = "D:\Root\SomeDir\SomeFile.txt"
+        /// <br/>-- Link File Path = "D:\"
+        /// <br/>-- Resulting Link = ".\Root\SomeDir\SomeFile.txt"
         /// </param>
         /// <exception cref="IOException"/>
         /// <exception cref="PlatformNotSupportedException"/>
-        public static void CreateAsSymbolicLink(string linkPath, string targetPath, bool isDirectory, bool makeTargetPathRelative = false)
+        /// <returns/>
+        public static void CreateAsSymbolicLink(string link, string pathToTarget, bool isDirectory, bool makeTargetRelative = false)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-            if (makeTargetPathRelative)
+            if (string.IsNullOrWhiteSpace(link)) throw new ArgumentException("linkPath must not be empty", nameof(link));
+            if (string.IsNullOrWhiteSpace(pathToTarget)) throw new ArgumentException("targetPath must not be empty", nameof(pathToTarget));
+
+            if (makeTargetRelative)
             {
-                targetPath = GetTargetPathRelativeToLink(linkPath, targetPath, isDirectory);
+                pathToTarget = GetTargetPathRelativeToLink(link, pathToTarget, isDirectory);
             }
 
-            var success = Win32.PInvoke.CreateSymbolicLink(linkPath, targetPath, isDirectory ? Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAGS.SYMBOLIC_LINK_FLAG_DIRECTORY : 0);
+            var success = Win32.PInvoke.CreateSymbolicLink(link, pathToTarget, isDirectory ? SYMBOLIC_LINK_FLAGS.SYMBOLIC_LINK_FLAG_DIRECTORY : 0);
             if (!success)
             {
                 try
@@ -76,12 +96,15 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
         }
 
+        /// <inheritdoc cref="CreateAsSymbolicLink(string, string, bool, bool)"/>
+        public static void CreateAsSymbolicLink(FileSystemInfo link, string pathToTarget, bool makeTargetRelative)
+            => CreateAsSymbolicLink(link?.FullName ?? throw new ArgumentNullException(nameof(link)), pathToTarget, link is DirectoryInfo, makeTargetRelative);
 
 #if NET6_0_OR_GREATER
 
         /// <remarks>Exposed here for binary compatibility.<br/>Calls the native method <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/>.</remarks>
         /// <inheritdoc cref="FileSystemInfo.CreateAsSymbolicLink(string)"/>
-        public static void CreateAsSymbolicLink(FileSystemInfo info, string pathToTarget) => info.CreateAsSymbolicLink(pathToTarget);
+        public static void CreateAsSymbolicLink(FileSystemInfo link, string pathToTarget) => link.CreateAsSymbolicLink(pathToTarget);
 
         /// <remarks>Exposed here for binary compatibility.<br/>Calls the native method <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/>.</remarks>
         /// <inheritdoc cref="FileSystemInfo.ResolveLinkTarget(bool)"/>
@@ -94,15 +117,19 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// <summary>
         /// Creates a symbolic link at the <see cref="FileSystemInfo.FullName"/> that points to the <paramref name="pathToTarget"/>
         /// </summary>
-        /// <param name="info">the file or directory to create as a link</param>
-        /// <param name="pathToTarget">The path of the symbolic link target.</param>
+        /// <param name="link">The file or directory to create as a link</param>
+        /// <param name="pathToTarget">
+        /// The path of the symbolic link target.
+        /// <para/><inheritdoc cref="Win32.PInvoke.CreateSymbolicLink(string, string, SYMBOLIC_LINK_FLAGS)" path="/param[@name='lpTargetFileName']"/>
+        /// </param>
         /// <remarks>Requires administractive privileges. Windows only.</remarks>
-        public static void CreateAsSymbolicLink(this FileSystemInfo info, string pathToTarget)
+        /// <inheritdoc cref="CreateAsSymbolicLink(string, string, bool, bool)"/>
+        public static void CreateAsSymbolicLink(this FileSystemInfo link, string pathToTarget)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-            if (info is null) throw new ArgumentNullException(nameof(info));
+            if (link is null) throw new ArgumentNullException(nameof(link));
             if (string.IsNullOrWhiteSpace(pathToTarget)) throw new ArgumentException("target path can not be empty", nameof(pathToTarget));
-            SymbolicLink.CreateAsSymbolicLink(pathToTarget, info.FullName, info is DirectoryInfo, false);
+            SymbolicLink.CreateAsSymbolicLink(link.FullName, pathToTarget, link is DirectoryInfo, false);
         }
 
         /// <summary>
@@ -127,6 +154,9 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         private static string GetTargetPathRelativeToLink(string linkPath, string targetPath, bool linkAndTargetAreDirectories = false)
         {
+            if (string.IsNullOrWhiteSpace(linkPath)) throw new ArgumentException("linkPath must not be empty", nameof(linkPath));
+            if (string.IsNullOrWhiteSpace(targetPath)) throw new ArgumentException("targetPath must not be empty", nameof(targetPath));
+
             FileAttributes relativePathAttribute = 0;
             if (linkAndTargetAreDirectories)
             {
@@ -153,43 +183,57 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
             else
             {
-                return relativePath.ToString();
+                return relativePath.TrimSymLink().ToString();
             }
         }
 
-        private static SafeFileHandle? GetSafeFileHandle(string path, bool isDir)
+        private static SafeFileHandle? GetSafeFileHandle(string path, bool isDir, bool openReparsePoint)
         {
-            const FILE_FLAGS_AND_ATTRIBUTES dirAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_DIRECTORY;
-            const FILE_FLAGS_AND_ATTRIBUTES fileAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_NORMAL;
-            
-            return Win32.PInvoke.CreateFile(
+            const FILE_FLAGS_AND_ATTRIBUTES dirAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_DIRECTORY;
+            const FILE_FLAGS_AND_ATTRIBUTES fileAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_NORMAL;
+            const FILE_FLAGS_AND_ATTRIBUTES reparseDir = dirAttr | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT;
+            const FILE_FLAGS_AND_ATTRIBUTES reparseFile = fileAttr | FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT;
+
+            var handle = Win32.PInvoke.CreateFile(
                     lpFileName: path,
                     dwDesiredAccess: (uint)GENERIC_ACCESS_RIGHTS.GENERIC_READ,
                     dwShareMode: FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE | FILE_SHARE_MODE.FILE_SHARE_DELETE,
                     lpSecurityAttributes: default,
                     dwCreationDisposition: FILE_CREATION_DISPOSITION.OPEN_EXISTING,
-                    dwFlagsAndAttributes: isDir ? dirAttr : fileAttr,
+                    dwFlagsAndAttributes: true switch
+                    {
+                        true when isDir && openReparsePoint => reparseDir,
+                        true when isDir => dirAttr,
+                        true when openReparsePoint => reparseFile,
+                        _ => fileAttr
+                    },
                     hTemplateFile: default);
-        }
-
-        /// <summary>
-        /// Windows-Only API Call to [ GetFinalPathNameByHandle ].
-        /// <br/><see href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea"/>
-        /// </summary>
-        /// <returns>
-        /// When run with admin privileges, returns the final target path.
-        /// <br/>When run without admin privileges, returns the input file path.
-        /// </returns>
-        public unsafe static string GetFinalPathNameByHandle(FileSystemInfo link)
-        {
-            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-
-            using SafeFileHandle fileHandle = GetSafeFileHandle(link.FullName, link is DirectoryInfo);
-            if (fileHandle.IsInvalid)
+            
+            if (handle.IsInvalid)
             {
+                handle.Dispose();
                 Marshal.ThrowExceptionForHR(Marshal.GetLastWin32Error());
                 throw new IOException("Invalid File Handle");
             }
+            return handle;
+        }
+
+        /// <inheritdoc cref="GetFinalPathNameByHandle(string, bool)"/>
+        public static string GetFinalPathNameByHandle(FileSystemInfo link)
+            => GetFinalPathNameByHandle(link?.FullName, link is DirectoryInfo);
+
+        /// <summary>
+        /// Windows-Only API Call to <see href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea">GetFinalPathNameByHandle</see>.
+        /// </summary>
+        /// <returns>
+        /// A string representing the target of the <paramref name="link"/>
+        /// </returns>
+        public unsafe static string GetFinalPathNameByHandle(string link, bool isDirectory)
+        {
+            VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
+            if (string.IsNullOrWhiteSpace(link)) throw new ArgumentNullException(nameof(link));
+
+            using SafeFileHandle fileHandle = GetSafeFileHandle(link, isDirectory, false);
 
             uint result;
             Span<char> text = new char[Win32.PInvoke.MAX_PATH];
@@ -255,10 +299,10 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         public static string? GetReparseDataTarget(FileSystemInfo link) => GetReparseDataTarget(link.FullName, link is DirectoryInfo);
 
         /// <summary>
-        /// Retrieve the target for the specified <paramref name="link"/>
+        /// Retrieve the target for the specified <paramref name="link"/> using the Windows api for REPARSE_DATA_BUFFER
         /// </summary>
         /// <param name="link">The path to the link, whose target shall be retrieved.</param>
-        /// <param name="isDir">set <see langword="true"/> if this is path represents a Directory</param>
+        /// <param name="isDirectory">set <see langword="true"/> if this is path represents a Directory</param>
         /// <returns>
         /// If the <paramref name="link"/> represents a symbolic link, this will return the target path.
         /// Otherwise returns <see langword="null"/> .
@@ -266,21 +310,15 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         /// <exception cref="Exception"></exception>
         /// <exception cref="NotImplementedException"></exception>
         /// <exception cref="PlatformNotSupportedException"></exception>
-        public unsafe static string? GetReparseDataTarget(string link, bool isDir)
+        public unsafe static string? GetReparseDataTarget(string link, bool isDirectory)
         {
             VersionManager.ThrowIfNotWindowsPlatform(PlatformErrorMessage);
-
-            using SafeFileHandle fileHandle = GetSafeFileHandle(link, isDir);
-            if (fileHandle.IsInvalid)
-            {
-                Marshal.ThrowExceptionForHR(Marshal.GetLastWin32Error());
-                return null;
-            }
+            if (string.IsNullOrWhiteSpace(link)) throw new ArgumentNullException(nameof(link));
+            
+            using SafeFileHandle fileHandle = GetSafeFileHandle(link, isDirectory, true);
 
             int bufferSize;
             bufferSize = (int)Win32.PInvoke.MAXIMUM_REPARSE_DATA_BUFFER_SIZE;
-            //bufferSize = REPARSE_DATA_BUFFER._Anonymous_e__Union._SymbolicLinkReparseBuffer_e__Struct.SizeOf(260); // WIN32.PInvoke.MAX_PATH
-            //bufferSize = (int)Win32.PInvoke.MAXIMUM_REPARSE_DATA_BUFFER_SIZE + REPARSE_DATA_BUFFER._Anonymous_e__Union._SymbolicLinkReparseBuffer_e__Struct.SizeOf(260); // WIN32.PInvoke.MAX_PATH
 
             Span<sbyte> outBuffer = new sbyte[bufferSize];
             outBuffer.Clear();
@@ -317,17 +355,12 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
                         ref var symReparse = ref data.Anonymous.SymbolicLinkReparseBuffer;
 
                         targetSpan = symReparse.PathBuffer.AsSpan((int)bytes / sizeof(char)).Slice(symReparse.SubstituteNameOffset / sizeof(char)).TrimSymLink();
-                        
-                        if (targetSpan.Length < 4 || !targetSpan.StartsWith(@"\??\".AsSpan()))
-                            throw new Exception("Invalid SymLink data was detected");
-                        
-                        targetSpan = targetSpan.Slice(4); 
-
-                        if (symReparse.Flags == MSWin.Wdk.PInvoke.SYMLINK_FLAG_RELATIVE) // Handle Relative paths
+                        return true switch
                         {
-                            throw new NotImplementedException("Symbolic Link Relative Paths are not implemented yet!");
-                        }
-                        return targetSpan.ToString();
+                            true when symReparse.Flags == MSWin.Wdk.PInvoke.SYMLINK_FLAG_RELATIVE => targetSpan.ToString(),
+                            true when targetSpan.Length > 4 && targetSpan.StartsWith(@"\??\".AsSpan()) => targetSpan.Slice(4).ToString(),
+                            _ => throw new Exception("Invalid SymLink data was detected")
+                        };
 
                     case Win32.PInvoke.IO_REPARSE_TAG_MOUNT_POINT:
                         ref var mountReparse = ref data.Anonymous.MountPointReparseBuffer;
@@ -340,6 +373,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool UintHasFlag(this uint value, uint flag) => value == flag || flag == (value & flag);
 
+        /// <summary>Trim the null characters and whitespace off the end of the span</summary>
         private static Span<char> TrimSymLink(this Span<char> span)
         {
 #if NET6_0_OR_GREATER
