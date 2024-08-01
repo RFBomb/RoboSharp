@@ -35,7 +35,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         [TestMethod]
         public void Test_SymbolicDirectory()
         {
-            if (Test_Setup.IsRunningOnAppVeyor()) return; // no guarantee appveyor will run as admin
+            //if (Test_Setup.IsRunningOnAppVeyor()) return; // no guarantee appveyor will run as admin
 
             string ranName() => Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
             DirectoryInfo link = new DirectoryInfo(Path.Combine(Root, ranName()));
