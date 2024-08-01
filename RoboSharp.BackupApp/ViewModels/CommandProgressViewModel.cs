@@ -33,7 +33,6 @@ namespace RoboSharp.BackupApp.ViewModels
 
         private IRoboCommand command;
         private string jobName;
-        private bool ListObjSetupComplete;
         private List<string> Dirs;
         private List<string> Files;
         private List<string> Dirs2;
@@ -82,7 +81,6 @@ namespace RoboSharp.BackupApp.ViewModels
             OnPropertyChanging(nameof(Command));
             command = cmd;
             OnPropertyChanged(nameof(Command));
-            ListObjSetupComplete = false;
 
             JobName = cmd?.Name ?? string.Empty;
             if (cmd is not null)
@@ -137,7 +135,6 @@ namespace RoboSharp.BackupApp.ViewModels
             Files2 = new List<string> { "Unique Files Reported by CopyProgressChanged", "---------------------" };
             OrderLog_1 = new List<string> { "Files and Dirs In Order Reported by OnFileProcessed", "---------------------" };
             OrderLog_2 = new List<string> { "Files and Dirs In Order Reported by CopyProgressChanged", "---------------------" };
-            ListObjSetupComplete = true;
         }
 
         #region < Buttons >
@@ -192,8 +189,8 @@ namespace RoboSharp.BackupApp.ViewModels
 
         #region < On*Processed >
 
-        private string DirString(ProcessedFileInfo pf) => pf.FileClass + "(" + pf.Size + ") - " + pf.Name;
-        private string FileString(ProcessedFileInfo pf) => pf.FileClass + "(" + pf.Size + ") - " + pf.Name;
+        private static string DirString(ProcessedFileInfo pf) => pf.FileClass + "(" + pf.Size + ") - " + pf.Name;
+        private static string FileString(ProcessedFileInfo pf) => pf.FileClass + "(" + pf.Size + ") - " + pf.Name;
 
 
         void OnCopyProgressChanged(object sender, CopyProgressEventArgs e)
@@ -264,7 +261,7 @@ namespace RoboSharp.BackupApp.ViewModels
             {
                 if (DebugMode == true)
                 {
-                    DirectoryInfo source = new DirectoryInfo(Command.CopyOptions.Source);
+                    var source = new DirectoryInfo(Command.CopyOptions.Source);
                     string path = System.IO.Path.Combine(source.Parent.FullName, "EventLogs") + "\\";
                     var PathDir = Directory.CreateDirectory(path);
 

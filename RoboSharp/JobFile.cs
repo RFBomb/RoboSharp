@@ -251,7 +251,7 @@ namespace RoboSharp
             await roboCommand.SaveAsJobFile(FilePath, true, true);
         }
 
-        /// <inheritdoc cref="RoboCommand.ToString">
+        /// <inheritdoc cref="RoboCommand.ToString"/>
         public override string ToString()
         {
             return roboCommand.ToString();

@@ -1,4 +1,5 @@
 ﻿#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+#pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning disable CA1416 // Validate platform compatibility
 
 using System;
@@ -397,4 +398,5 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 }
 
 #pragma warning restore CA1416 // Validate patform compatibility
+#pragma warning restore IDE0079 // Remove unnecessary suppression
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.

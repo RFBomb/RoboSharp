@@ -17,6 +17,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
     {
         static string Root => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RoboSharp.SymbolicLinkTesting");
         const string ERD = "\n>>\t";
+        static string RandomName() => Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
 
         [TestInitialize]
         public void Initialize_SymbolicLinkTest()
@@ -35,11 +36,8 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         [TestMethod]
         public void Test_SymbolicDirectory()
         {
-            //if (Test_Setup.IsRunningOnAppVeyor()) return; // no guarantee appveyor will run as admin
-
-            string ranName() => Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
-            DirectoryInfo link = new DirectoryInfo(Path.Combine(Root, ranName()));
-            DirectoryInfo target = new DirectoryInfo(Path.Combine(Root, ranName(), ranName()));
+            DirectoryInfo link = new DirectoryInfo(Path.Combine(Root, RandomName()));
+            DirectoryInfo target = new DirectoryInfo(Path.Combine(Root, RandomName(), RandomName()));
             target.Create();
             Console.WriteLine($"Link = {link.FullName}\nTarget = {target.FullName}");
 
@@ -94,8 +92,6 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         [TestMethod]
         public void Test_SymbolicFile()
         {
-            //if (Test_Setup.IsRunningOnAppVeyor()) return; // no guarantee appveyor will run as admin
-
             FileInfo target = new FileInfo(Path.GetTempFileName());
             try
             {
