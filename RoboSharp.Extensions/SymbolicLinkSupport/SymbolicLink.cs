@@ -13,6 +13,7 @@ using Windows.Win32.Storage.FileSystem;
 using REPARSE_DATA_BUFFER = Windows.Wdk.Storage.FileSystem.REPARSE_DATA_BUFFER;
 using System.Runtime.CompilerServices;
 using Windows.Win32.Foundation;
+using RoboSharp.Extensions.Options;
 
 namespace RoboSharp.Extensions.SymbolicLinkSupport
 {
@@ -22,6 +23,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
     public static class SymbolicLink
     {
         const string PlatformErrorMessage = "This function relies on Windows P/Invoke. Use .Net 6 or newer for platform comaptibility.";
+        const string NotFoundErrorMessage = "Could not find a part of the path '{0}'.";
 
         /// <summary>
         /// Determines whether this <see cref="FileSystemInfo"/> represents a symbolic link or junction.
@@ -147,9 +149,14 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         public static FileSystemInfo? ResolveLinkTarget(this FileSystemInfo link, bool returnFinalTarget)
         {
             if (link is null | !VersionManager.IsPlatformWindows) return null;
-            if ((returnFinalTarget ? GetReparseDataFinalTarget(link) : GetReparseDataTarget(link)) is string target) 
-                return link is DirectoryInfo ? new DirectoryInfo(target) : new FileInfo(target);
-            return null;
+            string? target = returnFinalTarget ? GetReparseDataFinalTarget(link) : GetReparseDataTarget(link);
+            return true switch
+            {
+                true when target is null => null,
+                true when link.FullName.Equals(target, StringComparison.CurrentCultureIgnoreCase) => link,
+                true when link is DirectoryInfo => new DirectoryInfo(target),
+                _ => new FileInfo(target)
+            };
         }
 #endif
 
@@ -188,7 +195,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
         }
 
-        private static SafeFileHandle? GetSafeFileHandle(string path, bool isDir, bool openReparsePoint)
+        private static SafeFileHandle? GetSafeFileHandle(string path, bool isDirectory, bool openReparsePoint)
         {
             const FILE_FLAGS_AND_ATTRIBUTES dirAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_DIRECTORY;
             const FILE_FLAGS_AND_ATTRIBUTES fileAttr = FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_NORMAL;
@@ -203,8 +210,8 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
                     dwCreationDisposition: FILE_CREATION_DISPOSITION.OPEN_EXISTING,
                     dwFlagsAndAttributes: true switch
                     {
-                        true when isDir && openReparsePoint => reparseDir,
-                        true when isDir => dirAttr,
+                        true when isDirectory && openReparsePoint => reparseDir,
+                        true when isDirectory => dirAttr,
                         true when openReparsePoint => reparseFile,
                         _ => fileAttr
                     },
@@ -214,6 +221,8 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             {
                 handle.Dispose();
                 Marshal.ThrowExceptionForHR(Marshal.GetLastWin32Error());
+                if (isDirectory && !Directory.Exists(path)) throw new DirectoryNotFoundException(NotFoundErrorMessage.Format(path));
+                if (!isDirectory && !File.Exists(path)) throw new FileNotFoundException(NotFoundErrorMessage.Format(path));
                 throw new IOException("Invalid File Handle");
             }
             return handle;
@@ -225,6 +234,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         /// <summary>
         /// Windows-Only API Call to <see href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea">GetFinalPathNameByHandle</see>.
+        /// <br/>- This can be used to discover the mount point of a mapped network drive ( J:\ == //SomeServer/Share$%/ )
         /// </summary>
         /// <returns>
         /// A string representing the target of the <paramref name="link"/>
@@ -249,7 +259,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
                 text.Clear();
                 fixed (char* builder = text)
                 {
-                    result = Win32.PInvoke.GetFinalPathNameByHandle(fileHandle, builder, Win32.PInvoke.MAX_PATH, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
+                    result = Win32.PInvoke.GetFinalPathNameByHandle(fileHandle, builder, result, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
                 }
             }
 
@@ -297,7 +307,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
         }
 
         /// <inheritdoc cref="GetReparseDataTarget(string, bool)"/>
-        public static string? GetReparseDataTarget(FileSystemInfo link) => GetReparseDataTarget(link.FullName, link is DirectoryInfo);
+        public static string? GetReparseDataTarget(FileSystemInfo link) => GetReparseDataTarget(link?.FullName, link is DirectoryInfo);
 
         /// <summary>
         /// Retrieve the target for the specified <paramref name="link"/> using the Windows api for REPARSE_DATA_BUFFER
