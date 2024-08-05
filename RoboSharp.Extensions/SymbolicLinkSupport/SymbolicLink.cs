@@ -191,7 +191,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             }
             else
             {
-                return relativePath.TrimSymLink().ToString();
+                return relativePath.ToString();
             }
         }
 
@@ -284,14 +284,16 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
             return true switch
             {
 #if NETCOREAPP3_0_OR_GREATER
-                true when text.StartsWith(uncPrefix.AsSpan()) => string.Concat("\\", text.Slice(7).TrimSymLink()),
+                true when text.StartsWith(uncPrefix) =>  string.Concat("\\", text.Slice(7, (int)result - 7)),
 #else
-                true when text.StartsWith(uncPrefix.AsSpan()) => $"\\{text.Slice(7).TrimSymLink().ToString()}",
+                true when text.StartsWith(uncPrefix.AsSpan()) => string.Concat("\\", text.Slice(7, (int)result - 7).ToString()),
 #endif
-                true when text.StartsWith(prefix.AsSpan()) => text.Slice(4).TrimSymLink().ToString(),
-                _ => text.TrimSymLink().ToString()
+                true when text.StartsWith(prefix.AsSpan()) => text.Slice(4, (int)result - 4).ToString(),
+                _ => text.Slice(0, (int)result).ToString()
             };
         }
+
+
 
         private static string? GetReparseDataFinalTarget(FileSystemInfo link)
         {
@@ -365,7 +367,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
                     case Win32.PInvoke.IO_REPARSE_TAG_SYMLINK:
                         ref var symReparse = ref data.Anonymous.SymbolicLinkReparseBuffer;
 
-                        targetSpan = symReparse.PathBuffer.AsSpan((int)bytes / sizeof(char)).Slice(symReparse.SubstituteNameOffset / sizeof(char)).TrimSymLink();
+                        targetSpan = symReparse.PathBuffer.AsSpan((int)bytes / sizeof(char)).Slice(symReparse.SubstituteNameOffset / sizeof(char), symReparse.SubstituteNameLength/sizeof(char));
                         return true switch
                         {
                             true when symReparse.Flags == MSWin.Wdk.PInvoke.SYMLINK_FLAG_RELATIVE => targetSpan.ToString(),
@@ -375,7 +377,7 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
                     case Win32.PInvoke.IO_REPARSE_TAG_MOUNT_POINT:
                         ref var mountReparse = ref data.Anonymous.MountPointReparseBuffer;
-                        return mountReparse.PathBuffer.AsSpan((int)bytes / sizeof(char)).Slice(mountReparse.PrintNameOffset / sizeof(char)).TrimSymLink().ToString();
+                        return mountReparse.PathBuffer.AsSpan((int)bytes / sizeof(char)).Slice(mountReparse.SubstituteNameOffset / sizeof(char), mountReparse.SubstituteNameLength / sizeof(char)).ToString();
                 }
                 return null;
             }
@@ -383,26 +385,6 @@ namespace RoboSharp.Extensions.SymbolicLinkSupport
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool UintHasFlag(this uint value, uint flag) => value == flag || flag == (value & flag);
-
-        /// <summary>Trim the null characters and whitespace off the end of the span</summary>
-        private static Span<char> TrimSymLink(this Span<char> span)
-        {
-#if NET6_0_OR_GREATER
-            return span.TrimEnd('\0').TrimEnd();
-#else
-            int lastIndex = span.Length - 1;
-            while (lastIndex >= 0)
-            {
-                char c = span[lastIndex];
-                if (c == '\0' || char.IsWhiteSpace(c))
-                    lastIndex--;
-                else
-                    break;
-            }
-            if (lastIndex == 0 || lastIndex == span.Length - 1) return span;
-            return span.Slice(0, lastIndex + 1);
-#endif
-        }
 
     }
 }
