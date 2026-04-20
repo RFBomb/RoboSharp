@@ -1,10 +1,10 @@
 ﻿using RoboSharp.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using RoboSharp.Extensions.Helpers;
 
 namespace RoboSharp.Extensions.Options
 {
@@ -44,18 +44,29 @@ namespace RoboSharp.Extensions.Options
             options.Mirror;
 
         /// <summary>
+        /// Evaluates the <paramref name="options"/> to determine if empty directories should be created at the destination
+        /// </summary>
+        public static bool IsIncludingEmptyDirectories(this CopyOptions options) =>
+            options.Mirror
+            || options.CopySubdirectoriesIncludingEmpty
+            || options.MoveFilesAndDirectories
+            ;
+
+        /// <summary>
         /// Evaluates the <paramref name="flag"/> to check if any of the PURGE options are enabled
         /// </summary>
+        [Obsolete("Commands should only purge when SelectionOptions.ExcludeExtra is false. Prefer the IsPurging(IRoboCommand) overload.", false)]
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public static bool IsPurging(this CopyActionFlags flag) =>
             flag.HasFlag(CopyActionFlags.Purge) ||
             flag.HasFlag(CopyActionFlags.Mirror);
 
         /// <summary>
-        /// Evaluates the <paramref name="options"/> to check if any of the PURGE options are enabled
+        /// Evaluates the <paramref name="command"/> to check if any of the PURGE options are enabled
         /// </summary>
-        public static bool IsPurging(this CopyOptions options) =>
-            options.Purge ||
-            options.Mirror;
+        public static bool IsPurging(this IRoboCommand command) =>
+            command.SelectionOptions.ExcludeExtra is false
+            && (command.CopyOptions.Purge || command.CopyOptions.Mirror);
 
         /// <summary>
         /// Compare the current depth against the maximum allowed depth, and determine if directory recursion can continue.
@@ -164,8 +175,7 @@ namespace RoboSharp.Extensions.Options
         /// </returns>
         public static bool ShouldIncludeFileName(this CopyOptions options, string fileName, IEnumerable<Regex> fileFilterRegex = null)
         {
-
-            if (fileFilterRegex is null) fileFilterRegex = options.GetFileFilterRegex();
+            fileFilterRegex ??= options.GetFileFilterRegex();
             if (fileFilterRegex.None()) return true;
             return fileFilterRegex.Any(r => r.IsMatch(fileName));
         }

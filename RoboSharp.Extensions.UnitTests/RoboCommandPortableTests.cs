@@ -1,56 +1,68 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RoboSharp;
+﻿using Microsoft.Testing.Platform.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Tests;
 using RoboSharp.Interfaces;
 using RoboSharp.UnitTests;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if NET6_0_OR_GREATER
+
 namespace RoboSharp.Extensions.Tests
 {
+    
+    /// <summary>
+    /// <br/> Runs the full <see cref="CommandTests{T}"/> suite against <see cref="RoboCommandPortable"/>.
+    /// <br/> Failures here indicate bugs in the portable implementation, not in the test expectations (which are validated by <see cref="CommandTests"/>).
+    /// </summary>
     [TestClass]
-    public class RoboMoverTests : RoboSharp.UnitTests.CommandTests<RoboMover>
+    public class RoboCommandPortable_StreamedCopier_CommandTests : RoboCommandPortable_CommandTestsBase
     {
-        const LoggingFlags DefaultLoggingAction = LoggingFlags.RoboSharpDefault | LoggingFlags.NoJobHeader;
+        protected override RoboCommandPortable GetCommand() => new RoboCommandPortable(StreamedCopierFactory.DefaultFactory);
+    }
 
-        [DataRow(true, @"C:\SomeDir")]
-        [DataRow(false, @"D:\System Volume Information")]
-        [TestMethod]
-        public void IsAllowedDir(bool expected, string path)
-        {
-            Assert.AreEqual(expected, RoboMover.IsAllowedRootDirectory(new DirectoryInfo(path)));
-        }
+#if WINDOWS || NETFRAMEWORK
+    [TestClass]
+    public class RoboCommandPortable_CopyFileEx_CommandTests : RoboCommandPortable_CommandTestsBase
+    {
+        protected override RoboCommandPortable GetCommand() => new RoboCommandPortable(new Windows.CopyFileExFactory());
+    }
+#endif
 
+
+    public abstract class RoboCommandPortable_CommandTestsBase : CommandTests<RoboCommandPortable>
+    {
         [TestMethod]
         [Timeout(10000, CooperativeCancellation = true)]
         [DataRow(CopyActionFlags.MoveFiles)]
         [DataRow(CopyActionFlags.MoveFiles | CopyActionFlags.Purge)]
         [DataRow(CopyActionFlags.MoveFilesAndDirectories)]
         [DataRow(CopyActionFlags.MoveFilesAndDirectories | CopyActionFlags.Purge)]
-        public async Task Test_RoboMover(CopyActionFlags copyOptions)
+        public async Task Test_Purge_Validation(CopyActionFlags copyOptions)
         {
-            var source= await base.PrepMoveSource();
+            var source = await base.PrepMoveSource();
+
             try
             {
-                var rm = new RoboMover()
+                var rm = new RoboCommandPortable(StreamedCopierFactory.DefaultFactory)
                 {
-                    CopyOptions =
+                    CopyOptions = new CopyOptions()
                     {
                         Source = source,
-                        Destination = TempDest,
-                    },
-                    LoggingOptions =
-                    {
-                         NoJobHeader =false,
+                        Destination = base.TempDest,
                     },
                 };
+
                 rm.CopyOptions.ApplyActionFlags(CopyActionFlags.CopySubdirectoriesIncludingEmpty | copyOptions);
-                rm.LoggingOptions.ApplyLoggingFlags(DefaultLoggingAction);
                 rm.SelectionOptions.ApplySelectionFlags(SelectionFlags.Default);
+                rm.LoggingOptions.ApplyLoggingFlags(LoggingFlags.RoboSharpDefault | LoggingFlags.NoJobHeader);
 
                 string subfolderpath = @"SubFolder_1\SubFolder_1.1\SubFolder_1.2";
                 FilePair[] SourceFiles = new FilePair[] {
@@ -85,28 +97,29 @@ namespace RoboSharp.Extensions.Tests
                 foreach (var file in purgeFiles)
                 {
                     file.Refresh();
-                    Assert.AreEqual(purge, !file.Exists, purge ? "File was not purged." : "File was purged unexpectedly.");
+                    Assert.AreEqual(purge, !file.Exists, purge ? "\n >> File was not purged." : "\n >> File was purged unexpectedly.");
                 }
                 foreach (var dir in PurgeDirectories)
                 {
                     dir.Refresh();
-                    Assert.AreEqual(purge, !dir.Exists, purge ? "Directory was not purged." : "Directory was purged unexpectedly.");
+                    Assert.AreEqual(purge, !dir.Exists, purge ? "\n >> Directory was not purged." : "\n >> Directory was purged unexpectedly.");
                 }
                 //evaluate moved
                 foreach (var filepair in SourceFiles)
                 {
                     filepair.Refresh();
-                    Assert.IsTrue(filepair.IsExtra(), string.Format("\nSource:{0}\nDestination:{1}\nFile was not moved to destination directory.", filepair.Source, filepair.Destination));
+                    Assert.IsTrue(filepair.Destination.Exists);
+                    Assert.IsTrue(filepair.IsExtra(), string.Format("\n >> Source:{0}\nDestination:{1}\nFile was not moved to destination directory.", filepair.Source, filepair.Destination));
                 }
                 bool moveDirectories = rm.CopyOptions.MoveFilesAndDirectories;
-                Assert.AreEqual(moveDirectories, SourceFiles[2].Parent.IsExtra(), moveDirectories ? "Directory was not moved" : "Directory was moved unexpectedly.");
-                Assert.AreEqual(moveDirectories, SourceFiles[3].Parent.IsExtra(), moveDirectories ? "Directory was not moved" : "Directory was moved unexpectedly.");
+                Assert.AreEqual(moveDirectories, SourceFiles[2].Parent.IsExtra(), moveDirectories ? "\n >> Directory was not moved" : "\n >> Directory was moved unexpectedly.");
+                Assert.AreEqual(moveDirectories, SourceFiles[3].Parent.IsExtra(), moveDirectories ? "\n >> Directory was not moved" : "\n >> Directory was moved unexpectedly.");
             }
             finally
             {
                 try { Directory.Delete(source, true); } catch { }
             }
-
         }
     }
 }
+#endif

@@ -1,12 +1,13 @@
-﻿using System;
+﻿using RoboSharp.Extensions.Helpers;
+using RoboSharp.Extensions.Options;
+using RoboSharp.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using System.Security.Cryptography.X509Certificates;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions
 {
 
     /// <summary>
@@ -72,6 +73,73 @@ namespace RoboSharp.Extensions.Helpers
             }
             return false;
         }
+
+        /// <summary>
+        /// Setup the <see cref="IProcessedDirectoryPair.ProcessedFileInfo"/> and determine if it should be recursed into for the purposes of copying or moving.
+        /// <br/> note : Purging is ignored here, so 'Extra' pairs will always return false.
+        /// </summary>
+        /// <param name="pair">The directory pair to evaluate</param>
+        /// <param name="command">the associated IRoboCommand</param>
+        /// <param name="directoryExclusionRegex">provide a cached object that stores the result of : <see cref="Options.SelectionExtensions.GetExcludedDirectoryRegex(SelectionOptions)"/></param>
+        /// <returns>
+        /// true if the directory should be processed further for COPYING, otherwise false.
+        /// <br/> Note: purging/mirroing is ignored for this evaluation.
+        /// </returns>
+        public static bool EvaluateCommandOptions(this IProcessedDirectoryPair pair, IRoboCommand command, IEnumerable<DirectoryRegex> directoryExclusionRegex)
+        {
+            var info = pair.ProcessedFileInfo ??= new ProcessedFileInfo();
+            
+            if (IsMismatch(pair.Source, pair.Destination))
+            {
+                info.SetDirectoryClass(ProcessedDirectoryFlag.MisMatch, command.Configuration);
+                return command.CopyOptions.Purge ||command.CopyOptions.Mirror;
+            }
+
+            if (pair.IsExtra())
+            {
+                info.Name = pair.Destination.FullName;
+                info.Size = -1;
+                info.SetDirectoryClass(ProcessedDirectoryFlag.ExtraDir, command.Configuration);
+                return false;
+            }
+
+            info.Name = pair.Source.FullName;
+            info.Size =  0;
+            
+            if (command.SelectionOptions.ShouldExcludeDirectoryName(pair, directoryExclusionRegex))
+            {
+                info.SetDirectoryClass(ProcessedDirectoryFlag.Exclusion, command.Configuration);
+                return false;
+            }
+
+            if (pair.IsLonely())
+            {
+                info.SetDirectoryClass(ProcessedDirectoryFlag.NewDir, command.Configuration);
+                return !command.SelectionOptions.ExcludeLonely;
+            }
+
+            info.SetDirectoryClass(ProcessedDirectoryFlag.ExistingDir, command.Configuration);
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if the DirectoryPair is a 'MisMatch' (Directory in one location, file in another)
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if one path leads to a directory while the other path leads to a file. 
+        /// <br/> otherwise <see langword="false"/> 
+        /// </returns>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static bool IsMismatch(FileSystemInfo source, FileSystemInfo destination)
+        {
+            return (source.Attributes > 0 && destination.Attributes > 0) && ((source.Attributes ^ destination.Attributes) & FileAttributes.Directory) != 0;
+        }
+
+        /// <summary>
+        /// Check for <see cref="FileAttributes.Hidden"/>
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal static bool IsHidden(this FileAttributes attributes) => attributes > 0 && attributes.HasFlag(FileAttributes.Hidden);
 
         /// <summary>
         /// Refreshes both the <see cref="IDirectoryPair.Source"/> and <see cref="IDirectoryPair.Destination"/> objects

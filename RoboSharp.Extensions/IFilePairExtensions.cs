@@ -1,18 +1,177 @@
-﻿using System;
+﻿using RoboSharp.Extensions.Options;
+using RoboSharp.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
-namespace RoboSharp.Extensions.Helpers
+namespace RoboSharp.Extensions
 {
     /// <summary>
     /// Extension Methods for the <see cref="IFilePair"/> interface
     /// </summary>
     public static class IFilePairExtensions
     {
+        /// <summary>
+        /// A return result for <see cref="EvaluateCommandOptions"/>
+        /// </summary>
+        public enum EvaluationResult
+        {
+            /// <summary>
+            /// File was Excluded for one of the various reasons. 
+            /// </summary>
+            Excluded,
+            
+            /// <summary>
+            /// File was skipped because it does not match the <see cref="CopyOptions.FileFilter"/>
+            /// </summary>
+            SkippedByFilter,
+            
+            /// <summary>
+            /// File selected for processing.
+            /// </summary>
+            Included
+        }
+
+        /// <summary>
+        /// Evaluate a <see cref="IFilePair"/> against the <paramref name="command"/> options to determine if it should be copied or not.
+        /// </summary>
+        /// <param name="pair">the file pair to evaluate</param>
+        /// <param name="command">The associated command</param>
+        /// <param name="copyOptions_FileNameNameInclusions"><see cref="Options.CopyExtensions.GetFileFilterRegex(CopyOptions)"/></param>
+        /// <param name="SelectionOptions_FileNameNameExclusions"><see cref="Options.SelectionExtensions.GetExcludedFileRegex(SelectionOptions)"/></param>
+        /// <returns></returns>
+        public static EvaluationResult EvaluateCommandOptions(this IFileCopier pair, IRoboCommand command, IEnumerable<Regex> copyOptions_FileNameNameInclusions, IEnumerable<Regex> SelectionOptions_FileNameNameExclusions)
+        {
+            var sOptions = command.SelectionOptions;
+            pair.ShouldCopy = false;
+            pair.ShouldPurge = false;
+
+            if (IDirectoryPairExtensions.IsMismatch(pair.Source, pair.Destination))
+            {
+                pair.ProcessedFileInfo = new ProcessedFileInfo(pair.Source, command, ProcessedFileFlag.MisMatch);
+                return EvaluationResult.Excluded;
+            }
+
+            // Extra
+            if (pair.IsExtra())
+            {
+                pair.ProcessedFileInfo = new ProcessedFileInfo(pair.Destination, command, ProcessedFileFlag.ExtraFile);
+                _ = command.ShouldPurge(pair); // process for purging
+                return EvaluationResult.Excluded;
+            }
+
+            ProcessedFileInfo pInfo = pair.ProcessedFileInfo ??= new ProcessedFileInfo(pair.Source, command, ProcessedFileFlag.None);
+
+            // evaluate Names
+            if (!Options.CopyExtensions.ShouldIncludeFileName(command.CopyOptions, pair.Source, copyOptions_FileNameNameInclusions))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.FileExclusion, command.Configuration);
+                return EvaluationResult.SkippedByFilter;
+            }
+
+            if (Options.SelectionExtensions.ShouldExcludeFileName(command.SelectionOptions, pair.Source, SelectionOptions_FileNameNameExclusions))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.FileExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            // lonely files 
+            if (sOptions.ShouldExcludeLonely(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.NewFile, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            // file age
+            if (sOptions.ShouldExcludeMaxFileAge(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.MaxAgeSizeExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+            if (sOptions.ShouldExcludeMinFileAge(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.MinAgeSizeExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            // file size
+            if (sOptions.ShouldExcludeMaxFileSize(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.MaxFileSizeExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+            if (sOptions.ShouldExcludeMinFileSize(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.MinFileSizeExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            // older / newer
+            if (sOptions.ShouldExcludeNewer(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.NewerFile, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+            if (sOptions.ShouldExcludeOlder(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.OlderFile, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            // access date
+            if (sOptions.ShouldExcludeMaxLastAccessDate(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.FileExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+            if (sOptions.ShouldExcludeMinLastAccessDate(pair))
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.FileExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            if (sOptions.ShouldIncludeAttributes(pair) == false)
+            {
+                pInfo.SetFileClass(ProcessedFileFlag.AttribExclusion, command.Configuration);
+                return EvaluationResult.Excluded;
+            }
+
+            if (pair.IsSameDate())
+            {
+                if (pair.Source.Attributes != pair.Destination.Attributes)
+                {
+                    pInfo.SetFileClass(ProcessedFileFlag.TweakedInclusion, command.Configuration);
+                    pair.ShouldCopy = command.SelectionOptions.IncludeTweaked;
+                }
+                else if (pair.Source.Length != pair.Destination.Length)
+                {
+                    pInfo.SetFileClass(ProcessedFileFlag.ChangedExclusion, command.Configuration);
+                    pair.ShouldCopy = !sOptions.ExcludeChanged;
+                }
+                else
+                {
+                    pInfo.SetFileClass(ProcessedFileFlag.SameFile, command.Configuration);
+                    pair.ShouldCopy = command.SelectionOptions.IncludeSame;
+                }
+                return pair.ShouldCopy ? EvaluationResult.Included : EvaluationResult.Excluded;
+            }
+
+            // tweaked
+
+            ProcessedFileFlag flag = pair.IsLonely() ? ProcessedFileFlag.NewFile
+                : pair.IsSourceNewer() ? ProcessedFileFlag.NewerFile
+                : pair.IsDestinationNewer() ? ProcessedFileFlag.OlderFile
+                : ProcessedFileFlag.None;
+
+            pair.ShouldCopy = flag != ProcessedFileFlag.None;
+
+
+            pInfo.SetFileClass(flag, command.Configuration);
+            return EvaluationResult.Included;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool FileDoesntExist(string destination) => !File.Exists(destination);
 
@@ -168,7 +327,7 @@ namespace RoboSharp.Extensions.Helpers
             if (source is null) throw new ArgumentNullException(nameof(source));
             if (destination is null) throw new ArgumentNullException(nameof(destination));
             if (destination.Exists && source.Exists)
-                return source.LastWriteTime == destination.LastWriteTime;
+                return source.LastWriteTimeUtc == destination.LastWriteTimeUtc;
             else
                 return false;
         }

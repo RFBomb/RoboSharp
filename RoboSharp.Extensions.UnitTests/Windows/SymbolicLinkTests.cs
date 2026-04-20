@@ -1,32 +1,63 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿#if WINDOWS
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RoboSharp.Extensions.SymbolicLinkSupport;
-using RoboSharp.UnitTests;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.Win32.Storage.FileSystem;
+using System.Security.Principal;
 
 
 namespace RoboSharp.Extensions.Windows.UnitTests
 {
+    /// <summary>
+    /// Run the test only if running in with escalated privileges
+    /// </summary>
+    public sealed class RequiresAdminAttribute : ConditionBaseAttribute
+    {
+        public RequiresAdminAttribute() : base(ConditionMode.Include) { }
+
+        public override string GroupName => "Requires Admin Privileges";
+
+        public override bool IsConditionMet => IsAdministrator();
+
+        public static bool IsAdministrator()
+        {
+            using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            bool result =  principal.IsInRole(WindowsBuiltInRole.Administrator);
+            return result;
+        }
+    }
+
     // These tests must be run as administrator to pass!
     [TestClass]
     public class SymbolicLinkTests
     {
         static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RoboSharp.SymbolicLinkTesting");
         static readonly string TargetRoot = Path.Combine(Root, "Targets");
+        static bool isAdmin = false;
 
         const string ERD = "\n>>\t";
         static string RandomName() => Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
 
+        public TestContext TestContext { get; set;  }
+
+        [ClassInitialize]
+        public static void ClassInitialize(TestContext testContext)
+        {
+            isAdmin = RequiresAdminAttribute.IsAdministrator();
+        }
+
         [TestInitialize]
         public void Initialize_SymbolicLinkTest()
         {
+            if (!isAdmin)
+            {
+                Console.WriteLine("Test Requires Admin Privileges");
+                return;
+            }
             Console.WriteLine("----------------------\n THIS TEST REQUIRES ADMIN PRIVILEGES (OR DEVELOPER-MODE ENABLED) AT RUN-TIME ");
-            RoboSharp.UnitTests.Test_Setup.PrintEnvironment();
+            RoboSharp.UnitTests.Test_Setup.PrintEnvironment(TestContext);
             Directory.CreateDirectory(Root);
             Directory.CreateDirectory(TargetRoot);
             SymbolicLink.ALLOW_UNPRIVILEGED_CREATE = true;
@@ -35,10 +66,13 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         [TestCleanup]
         public void Cleanup_SymbolicLinkTest()
         {
+            if (!isAdmin)
+                return;
             Directory.Delete(Root, true);
         }
 
         [TestMethod]
+        [RequiresAdmin]
         public void Test_SymbolicDirectory()
         {
             DirectoryInfo target = new DirectoryInfo(Path.Combine(TargetRoot, RandomName(), RandomName()));
@@ -97,6 +131,7 @@ namespace RoboSharp.Extensions.Windows.UnitTests
         }
 
         [TestMethod]
+        [RequiresAdmin]
         public void Test_SymbolicFile()
         {
             FileInfo target = new FileInfo(Path.Combine(TargetRoot, Path.GetFileNameWithoutExtension(Path.GetRandomFileName()) + ".txt"));
@@ -174,3 +209,5 @@ namespace RoboSharp.Extensions.Windows.UnitTests
 
     }
 }
+
+#endif

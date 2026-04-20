@@ -1,6 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RoboSharp;
-using RoboSharp.Extensions.Helpers;
 using RoboSharp.Interfaces;
 using RoboSharp.UnitTests;
 using System;
@@ -14,6 +13,17 @@ namespace RoboSharp.Extensions.Tests
     [TestClass]
     public class DirectoryPairTests
     {
+        public TestContext TestContext { get; set; }
+        private string Destination { get; set; }
+
+        [TestInitialize]
+        public void Initialize()
+        {
+            Destination = Test_Setup.GetNewTempPath();
+        }
+
+        [TestCleanup]
+        public void Cleanup() => Test_Setup.ClearOutTestDestination(Destination);
 
         [DataRow(true, @"C:\")]
         [DataRow(false, @"C:\MyDocuments")]
@@ -50,10 +60,9 @@ namespace RoboSharp.Extensions.Tests
         [TestMethod]
         public void Test_ExtraFiles()
         {
-            Test_Setup.ClearOutTestDestination();
             DirectoryInfo source = new DirectoryInfo(Test_Setup.Source_Standard);
-            DirectoryInfo dest = new DirectoryInfo(Test_Setup.TestDestination);
-            if (!dest.Exists) dest.Create();
+            DirectoryInfo dest = Directory.CreateDirectory(Destination);
+            
             dest.Refresh();
             string f1 = Path.Combine(dest.FullName, "TestFile.txt");
             File.WriteAllText(f1, "MyText");
@@ -66,15 +75,50 @@ namespace RoboSharp.Extensions.Tests
         [TestMethod]
         public void Test_ExtraDirectories()
         {
-            Test_Setup.ClearOutTestDestination();
             DirectoryInfo source = new DirectoryInfo(Test_Setup.Source_Standard);
-            DirectoryInfo dest = new DirectoryInfo(Test_Setup.TestDestination);
+            DirectoryInfo dest = Directory.CreateDirectory(Destination);
             string sub1 = Path.Combine(dest.FullName, "Sub1", "Sub1.1");
             Directory.CreateDirectory(sub1);
             Directory.CreateDirectory(Path.Combine(dest.FullName, "Sub2", "Sub2.1"));
             var dp = DirectoryPair.CreatePair(source, dest);
             Assert.AreEqual(2, dp.ExtraDirectories.Count());
             Assert.IsFalse(dp.SourceDirectories.Any(d => d.Destination.FullName == sub1));
+        }
+
+        [TestMethod]
+        public void Test_IsMismatch()
+        {
+            var dir = Test_Setup.GetNewTempPath();
+            var file = Test_Setup.GetNewTempPath();
+            try
+            {
+
+                File.WriteAllText(file, "test");
+                var fInfo = new FileInfo(file);
+                var fInfo2 = new FileInfo(file);
+                var dInfo = Directory.CreateDirectory(dir);
+                var dInfo2 = Directory.CreateDirectory(dir);
+
+                // is mismatch because one if a file and other is a directory
+                Assert.IsTrue(IDirectoryPairExtensions.IsMismatch(dInfo, fInfo));
+                Assert.IsTrue(IDirectoryPairExtensions.IsMismatch(fInfo, dInfo));
+
+                // is not mismatch because other path does not exist
+                string notExist = Test_Setup.GetNewTempPath();
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(fInfo, new FileInfo(notExist)));
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(fInfo, new DirectoryInfo(notExist)));
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(dInfo, new FileInfo(notExist)));
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(dInfo, new DirectoryInfo(notExist)));
+
+                // is not mismatch because both are of same type
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(fInfo, fInfo2));
+                Assert.IsFalse(IDirectoryPairExtensions.IsMismatch(dInfo, dInfo2));
+            }
+            finally
+            {
+                File.Delete(file);
+                Directory.Delete(dir);
+            }
         }
     }
 }

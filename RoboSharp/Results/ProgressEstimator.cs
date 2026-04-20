@@ -234,26 +234,61 @@ namespace RoboSharp.Results
 
             WhereToAdd? whereTo = null;
             bool SetCurrentDir = false;
-            if (currentDir.FileClass.Equals(Config.LogParsing_ExistingDir, StringComparison.CurrentCultureIgnoreCase))  // Existing Dir
-            { 
-                whereTo = WhereToAdd.Skipped;
-                SetCurrentDir = true;
-            }   
-            else if (currentDir.FileClass.Equals(Config.LogParsing_NewDir, StringComparison.CurrentCultureIgnoreCase))  //New Dir
-            { 
-                whereTo = WhereToAdd.Copied;
-                SetCurrentDir = true;
-            }    
-            else if (currentDir.FileClass.Equals(Config.LogParsing_ExtraDir, StringComparison.CurrentCultureIgnoreCase)) //Extra Dir
-            { 
-                whereTo = WhereToAdd.Extra;
-                SetCurrentDir = false;
-            }   
-            else if (currentDir.FileClass.Equals(Config.LogParsing_DirectoryExclusion, StringComparison.CurrentCultureIgnoreCase)) //Excluded Dir
-            { 
-                whereTo = WhereToAdd.Skipped;
-                SetCurrentDir = false;
+            switch(currentDir.GetProcessedDirectoryFlag())
+            {
+                case ProcessedDirectoryFlag.None:
+                    break;
+
+                case ProcessedDirectoryFlag.ExistingDir:
+                    whereTo = WhereToAdd.Skipped;
+                    SetCurrentDir = true;
+                    break;
+
+                case ProcessedDirectoryFlag.NewDir:
+                    whereTo = Command.SelectionOptions.ExcludeLonely ? WhereToAdd.Skipped : WhereToAdd.Copied;
+                    SetCurrentDir = true;
+                    break;
+
+                case ProcessedDirectoryFlag.ExtraDir:
+                    whereTo = WhereToAdd.Extra;
+                    SetCurrentDir = true; 
+                    break;
+
+                case ProcessedDirectoryFlag.Exclusion: 
+                    whereTo = WhereToAdd.Skipped; 
+                    SetCurrentDir = false; 
+                    break;
+
+                case ProcessedDirectoryFlag.MisMatch:
+                    whereTo = WhereToAdd.MisMatch;
+                    SetCurrentDir = false;
+                    break;
             }
+
+            if (whereTo is null) //  legacy
+            {
+                if (currentDir.FileClass.Equals(Config.LogParsing_ExistingDir, StringComparison.CurrentCultureIgnoreCase))  // Existing Dir
+                {
+                    whereTo = WhereToAdd.Skipped;
+                    SetCurrentDir = true;
+                }
+                else if (currentDir.FileClass.Equals(Config.LogParsing_NewDir, StringComparison.CurrentCultureIgnoreCase))  //New Dir
+                {
+                    whereTo = Command.SelectionOptions.ExcludeLonely ? WhereToAdd.Skipped : WhereToAdd.Copied;
+                    SetCurrentDir = true;
+                }
+                else if (currentDir.FileClass.Equals(Config.LogParsing_ExtraDir, StringComparison.CurrentCultureIgnoreCase)) //Extra Dir
+                {
+                    whereTo = WhereToAdd.Extra;
+                    SetCurrentDir = false;
+                }
+                else if (currentDir.FileClass.Equals(Config.LogParsing_DirectoryExclusion, StringComparison.CurrentCultureIgnoreCase)) //Excluded Dir
+                {
+                    whereTo = WhereToAdd.Skipped;
+                    SetCurrentDir = false;
+                }
+            }
+
             //Store CurrentDir under various conditions
             if (SetCurrentDir)
             {
@@ -322,6 +357,22 @@ namespace RoboSharp.Results
                 {
                     tmpDir.Total++;
                     tmpDir.Skipped++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds 1 to the directories Extra stat.
+        /// <br/>Extra dirs are not added to the total.
+        /// </summary>
+        /// <param name="dir"></param>
+        public void AddDirExtra(ProcessedFileInfo dir)
+        {
+            lock (DirLock)
+            {
+                if (dir != CurrentDir)
+                {
+                    tmpDir.Extras++;
                 }
             }
         }

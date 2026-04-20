@@ -171,6 +171,8 @@ namespace RoboSharp.Extensions.Helpers
         public virtual void AddFileExtra(ProcessedFileInfo file)
         {
             ProgressEstimator.AddFileExtra(file);
+            if (Command.LoggingOptions.NoFileList || (Command.SelectionOptions.ExcludeExtra && !Command.LoggingOptions.VerboseOutput)) 
+                return;
             LogFileInfo(file);
         }
 
@@ -219,7 +221,8 @@ namespace RoboSharp.Extensions.Helpers
         public virtual void AddFileSkipped(ProcessedFileInfo file)
         {
             ProgressEstimator.AddFileSkipped(file);
-            LogFileInfo(file);
+            if (Command.LoggingOptions.VerboseOutput || Command.LoggingOptions.ReportExtraFiles)
+                LogFileInfo(file);
         }
 
         /// <summary>
@@ -250,8 +253,9 @@ namespace RoboSharp.Extensions.Helpers
         private void LogDir(ProcessedFileInfo dir)
         {
             //Check to log the directory listing
-            if (!Command.LoggingOptions.NoDirectoryList)
-                WriteToLogs(dir.ToString(Command.LoggingOptions));
+            if (Command.LoggingOptions.NoDirectoryList) return;
+            if (!Command.LoggingOptions.VerboseOutput && Command.SelectionOptions.ExcludeLonely && dir.GetProcessedDirectoryFlag() == ProcessedDirectoryFlag.NewDir) return;
+            WriteToLogs(dir.ToString(Command.LoggingOptions));
         }
 
         /// <summary>
@@ -261,7 +265,9 @@ namespace RoboSharp.Extensions.Helpers
         {
             var info = topLevelDirectory.ProcessedFileInfo;
             if (topLevelDirectory.Destination.Exists)
+            {
                 ProgressEstimator.AddDirSkipped(info);
+            }
             else
             {
                 info.SetDirectoryClass(ProcessedDirectoryFlag.NewDir, Command.Configuration);
@@ -286,6 +292,37 @@ namespace RoboSharp.Extensions.Helpers
         {
             ProgressEstimator.AddDirSkipped(dir);
             LogDir(dir);
+        }
+
+        /// <summary>
+        /// Extra dirs are added to the 'Extras' statistic, but not the total. 
+        /// They are also only reported to the log under specific conditions.
+        /// </summary>
+        /// <param name="dir"></param>
+        public void AddDirExtra(ProcessedFileInfo dir)
+        {
+            ProgressEstimator.AddDirExtra(dir);
+            if (Command.LoggingOptions.VerboseOutput || Command.LoggingOptions.ReportExtraFiles)
+                LogDir(dir);
+        }
+
+        /// <summary>
+        /// Logs the mismatch, but does not add it to the statistic.
+        /// </summary>
+        public void ReportMismatch(ProcessedFileInfo dirOrFile)
+        {
+            if (dirOrFile is null || dirOrFile.FileClassType == FileClassType.SystemMessage)
+                return;
+            if (dirOrFile.FileClassType == FileClassType.File)
+            {
+                LogFileInfo(dirOrFile);
+                return;
+            }
+            if (dirOrFile.FileClassType == FileClassType.NewDir)
+            {
+                LogDir(dirOrFile);
+                return;
+            }
         }
 
         #endregion
@@ -329,6 +366,9 @@ namespace RoboSharp.Extensions.Helpers
         /// </summary>
         public virtual void CreateHeader()
         {
+            if (Command.LoggingOptions.NoJobHeader) 
+                return;
+
             List<string> header = new List<string>(24)
                 {
                     Divider,
@@ -450,6 +490,10 @@ namespace RoboSharp.Extensions.Helpers
         /// Add the lines to the log lines, and also write it to the output logs
         /// </summary>
         /// <param name="lines"></param>
+        /// <remarks>
+        /// Evaluates <see cref="RoboSharpConfiguration.EnableFileLogging"/> to determine if it should write to the in-memory list.
+        /// <br/> Will always write to the output logs, regardless of the <see cref="RoboSharpConfiguration.EnableFileLogging"/> setting
+        /// </remarks>
         protected virtual void WriteToLogs(params string[] lines)
         {
             if (lines.Length == 0) return;
@@ -457,6 +501,22 @@ namespace RoboSharp.Extensions.Helpers
             {
                 if (Command.Configuration.EnableFileLogging) LogLines.AddRange(lines);
                 Command.LoggingOptions.AppendToLogs(lines);
+            }
+        }
+
+        /// <summary>
+        /// Add the File or Directory detail line to the log lines, and also write it to the output logs
+        /// </summary>
+        /// <remarks>
+        /// Evaluates <see cref="RoboSharpConfiguration.EnableFileLogging"/> to determine if it should write to the in-memory list.
+        /// <br/> Will always write to the output logs, regardless of the <see cref="RoboSharpConfiguration.EnableFileLogging"/> setting
+        /// </remarks>
+        protected void WriteToLogs(string line)
+        {
+            lock (LogLines)
+            {
+                if (Command.Configuration.EnableFileLogging) LogLines.Add(line);
+                Command.LoggingOptions.AppendToLogs(line);
             }
         }
 
@@ -470,6 +530,18 @@ namespace RoboSharp.Extensions.Helpers
             {
                 LogLines.AddRange(logLines);
                 Command.LoggingOptions.AppendToLogs(logLines);
+            }
+        }
+
+        /// <summary>
+        /// Write the <paramref name="line"/> to the logs
+        /// </summary>
+        public void Print(string line)
+        {
+            lock (LogLines)
+            {
+                LogLines.Add(line);
+                Command.LoggingOptions.AppendToLogs(line);
             }
         }
 
