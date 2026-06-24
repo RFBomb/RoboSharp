@@ -11,7 +11,7 @@
         </TargetFrameworks>
         <NetFrameworkRegex><![CDATA[^net4[5-8][0-2]?$]]></NetFrameworkRegex>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>1.6.3.0</Version>
+        <Version>1.6.3.1</Version>
         <Copyright>Copyright 2026</Copyright>
         <Authors>Terry | PC Assist Software</Authors>
         <owners>Terry | PC Assist Software</owners>
@@ -23,10 +23,7 @@
         <Description>RoboSharp is a .NET wrapper for the awesome Robocopy windows application.</Description>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageReleaseNotes>
-            - Performance Optimizations.
-            - Fixes SpeedStatistic parsing bug.
-            - Added targets for NetFramework 4.6.2 and net4.8
-            - Final release for NetFramework 4.5.2
+			- Strong Named the assembly.
         </PackageReleaseNotes>
     </PropertyGroup>
 

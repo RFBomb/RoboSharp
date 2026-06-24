@@ -39,8 +39,8 @@
            - RoboMover always checks if the Source and Destination are on the same root, and if files are getting moved. If both conditions are true, it performs the move. If either condition is false, it will run as a standard RoboCommand.
       </Description>
       <PackageReleaseNotes>
-          - Fixed an issue with StreamedCopier that resulted in incorrect file sizes.
-      </PackageReleaseNotes>
+		  - Strong Named the assembly.
+	  </PackageReleaseNotes>
   </PropertyGroup>
 
     <ItemGroup>
